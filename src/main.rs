@@ -1,7 +1,6 @@
 use model::Attribute;
 
 mod lexer;
-mod convert;
 mod model;
 use model::{Function, Type};
 use model::View::*;
@@ -35,7 +34,7 @@ fn main() {
             false,
         ));
     println!("{}", class.as_string());
-    println!("{:?}", lexer::get_identifiers("class Held{\n+ method_name(held: Held) : void\n+ name : type\n}\n".to_string()));
+    println!("{:?}", lexer::get_identifiers("class Held{\n+ method_name(held: Held) : void\n+ name : type\n}\nHeld\n".to_string()));
 }
 
 // fn get_objects<'a>(indents: Vec<Identifier>) -> Vec<dyn Object> {

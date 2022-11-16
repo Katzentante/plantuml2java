@@ -1,4 +1,5 @@
 use std::{
+    env::VarError,
     fs::File,
     io::{self, BufRead},
     path::Path,
@@ -47,6 +48,9 @@ pub enum Indentifier {
 }
 */
 // TODO remove pub
+// - remove pub
+// - use single lines to parse see commeted above
+// - impl parsing of extends
 pub fn get_identifiers(line: String) -> Vec<Indentifier> {
     // ignore comments
     match line.chars().nth(0) {
@@ -69,7 +73,12 @@ pub fn get_identifiers(line: String) -> Vec<Indentifier> {
             ' ' => match ident.as_str() {
                 "class" => out.push(Indentifier::Class),
                 "interface" => out.push(Indentifier::Interface),
-                _ => continue,
+                _ => {
+                    // if ident.trim().len() > 0 {
+                    //     out.push(Indentifier::Name(ident.clone()));
+                    // }
+                    continue;
+                }
             },
             '+' => out.push(Indentifier::Public),
             '#' => out.push(Indentifier::Protected),
@@ -80,8 +89,13 @@ pub fn get_identifiers(line: String) -> Vec<Indentifier> {
                 }
             }
             '\n' => {
-                if ident.len() > 0 {
-                    out.push(Indentifier::Type(ident.clone()));
+                if ident.trim().len() > 0 {
+                    match out.last() {
+                        Some(Indentifier::Variable(_) | Indentifier::EndMethod) => {
+                            out.push(Indentifier::Type(ident.clone()))
+                        }
+                        _ => out.push(Indentifier::Name(ident.clone())),
+                    }
                 }
             }
             '{' => {
