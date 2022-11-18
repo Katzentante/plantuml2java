@@ -28,40 +28,47 @@ pub enum Indentifier {
     InheritesLeft,
     InheritesRight,
 
-    Startyuml,
+    Startuml,
     Enduml,
 }
 
 // TODO merge lists ot one
-/* pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Vec<Indentifier>>> {
+pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Vec<Indentifier>>> {
     let path = Path::new(filename);
     let file = File::open(path)?;
     let list: Vec<Vec<Indentifier>> = io::BufReader::new(file)
         .lines()
         .filter(|x| x.is_ok())
         .map(|x| x.unwrap())
+        /* .map(|mut line| {
+            line.push(' ');
+            line
+        }) */
         .map(|line| parse_line(line))
         .collect();
     let mut out = Vec::new();
     list.iter().map(|l| out.extend(l));
     Ok(list)
 }
-*/
+
 // TODO remove pub
 // - remove pub
 // - use single lines to parse see commeted above
 // - impl parsing of extends
-pub fn get_identifiers(line: String) -> Vec<Indentifier> {
+pub fn parse_line(mut line: String) -> Vec<Indentifier> {
     // ignore comments
     match line.chars().nth(0) {
         Some('\'') => return Vec::new(),
         _ => (),
     };
+    println!("{:?}", line);
     match line.as_str() {
-        "@startyuml" => return vec![Indentifier::Startyuml],
-        "@endyuml" => return vec![Indentifier::Enduml],
+        "@startuml" => return vec![Indentifier::Startuml],
+        "@enduml" => return vec![Indentifier::Enduml],
         _ => (),
     };
+
+    line.push(' ');
 
     let mut out = Vec::new();
     let mut object_started = false;
@@ -74,10 +81,15 @@ pub fn get_identifiers(line: String) -> Vec<Indentifier> {
                 "class" => out.push(Indentifier::Class),
                 "interface" => out.push(Indentifier::Interface),
                 _ => {
-                    // if ident.trim().len() > 0 {
-                    //     out.push(Indentifier::Name(ident.clone()));
-                    // }
-                    continue;
+                    if ident.trim().len() > 0 {
+                        match out.last() {
+                            Some(Indentifier::Variable(_) | Indentifier::EndMethod) => {
+                                out.push(Indentifier::Type(ident.clone()))
+                            }
+                            _ => continue,
+                        }
+                    } else {continue;}
+
                 }
             },
             '+' => out.push(Indentifier::Public),
@@ -89,14 +101,8 @@ pub fn get_identifiers(line: String) -> Vec<Indentifier> {
                 }
             }
             '\n' => {
-                if ident.trim().len() > 0 {
-                    match out.last() {
-                        Some(Indentifier::Variable(_) | Indentifier::EndMethod) => {
-                            out.push(Indentifier::Type(ident.clone()))
-                        }
-                        _ => out.push(Indentifier::Name(ident.clone())),
-                    }
-                }
+                // if ident.trim().len() > 0 {
+                // }
             }
             '{' => {
                 if !object_started {
@@ -125,10 +131,14 @@ pub fn get_identifiers(line: String) -> Vec<Indentifier> {
                 }
             }
             ')' => {
-                out.push(Indentifier::Type(ident.clone()));
+                if ident.trim().len() > 0 {
+                    out.push(Indentifier::Type(ident.clone()));
+                }
                 out.push(Indentifier::EndMethod)
             }
             ',' => out.push(Indentifier::Type(ident.clone())),
+            '>' => out.push(Indentifier::InheritesRight),
+            '<' => out.push(Indentifier::InheritesLeft),
             _ => {
                 ident.push(char.clone());
                 continue;
