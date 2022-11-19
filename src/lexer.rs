@@ -33,7 +33,7 @@ pub enum Indentifier {
 }
 
 // TODO merge lists ot one
-pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Vec<Indentifier>>> {
+pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Indentifier>> {
     let path = Path::new(filename);
     let file = File::open(path)?;
     let list: Vec<Vec<Indentifier>> = io::BufReader::new(file)
@@ -47,8 +47,8 @@ pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Vec<Indenti
         .map(|line| parse_line(line))
         .collect();
     let mut out = Vec::new();
-    list.iter().map(|l| out.extend(l));
-    Ok(list)
+    list.iter().map(|l| out.extend(*l));
+    Ok(out)
 }
 
 // TODO remove pub
@@ -86,10 +86,14 @@ pub fn parse_line(mut line: String) -> Vec<Indentifier> {
                             Some(Indentifier::Variable(_) | Indentifier::EndMethod) => {
                                 out.push(Indentifier::Type(ident.clone()))
                             }
-                            _ => continue,
+                            _ => {
+                                out.push(Indentifier::Name(ident.clone()));
+                                continue;
+                            }
                         }
-                    } else {continue;}
-
+                    } else {
+                        continue;
+                    }
                 }
             },
             '+' => out.push(Indentifier::Public),
@@ -97,6 +101,7 @@ pub fn parse_line(mut line: String) -> Vec<Indentifier> {
             '-' => out.push(Indentifier::Private),
             ':' => {
                 if ident.trim().len() > 0 {
+                    out.pop();
                     out.push(Indentifier::Variable(ident.clone()))
                 }
             }
