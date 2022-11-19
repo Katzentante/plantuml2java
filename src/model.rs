@@ -1,3 +1,5 @@
+
+#[derive(Debug)]
 pub struct Class<'a> {
     pub(crate) name: &'a str,
     attributes: Vec<Attribute<'a>>,
@@ -90,6 +92,7 @@ impl<'a> Class<'a> {
         }
 
         str.push('}');
+        str.push('\n');
 
         str
     }
@@ -105,7 +108,7 @@ impl<'a> Class<'a> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Attribute<'a> {
     view: View,
     name: &'a str,
@@ -151,6 +154,7 @@ impl<'a> Attribute<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct Function<'a> {
     name: &'a str,
     view: View,
@@ -201,7 +205,7 @@ impl<'a> Function<'a> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Type<'a> {
     Other(&'a str),
 }
@@ -214,7 +218,7 @@ impl<'a> Type<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum View {
     Normal,
     Private,

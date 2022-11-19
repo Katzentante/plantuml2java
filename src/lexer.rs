@@ -122,7 +122,7 @@ fn parse_line(line: &String) -> Vec<Indentifier> {
                     match ident.as_str() {
                         "abstract" => out.push(Indentifier::Abstract),
                         "static" => out.push(Indentifier::Static),
-                        _ => println!("!!!!!-------!!!!!!{}", ident),
+                        _ => (),
                     }
                     second_object_started = false;
                 } else {
