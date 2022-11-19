@@ -1,5 +1,4 @@
 use std::{
-    env::VarError,
     fs::File,
     io::{self, BufRead},
     path::Path,
@@ -36,42 +35,38 @@ pub enum Indentifier {
 pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Indentifier>> {
     let path = Path::new(filename);
     let file = File::open(path)?;
-    let list: Vec<Vec<Indentifier>> = io::BufReader::new(file)
+    let mut out = Vec::new();
+    let lines: Vec<String> = io::BufReader::new(file)
         .lines()
         .filter(|x| x.is_ok())
         .map(|x| x.unwrap())
-        /* .map(|mut line| {
-            line.push(' ');
-            line
-        }) */
-        .map(|line| parse_line(line))
+        .map(|mut x| {
+            x.push(' ');
+            x
+        })
         .collect();
-    let mut out = Vec::new();
-    list.iter().map(|l| out.extend(*l));
+    for line in lines.iter() {
+        out.extend(parse_line(&line))
+    }
+    // list.iter().map(|l| out.extend(*l));
     Ok(out)
 }
 
 // TODO remove pub
-// - remove pub
-// - use single lines to parse see commeted above
-// - impl parsing of extends
-pub fn parse_line(mut line: String) -> Vec<Indentifier> {
+fn parse_line(line: &String) -> Vec<Indentifier> {
     // ignore comments
     match line.chars().nth(0) {
         Some('\'') => return Vec::new(),
         _ => (),
     };
-    println!("{:?}", line);
+    // println!("{:?}", line);
     match line.as_str() {
-        "@startuml" => return vec![Indentifier::Startuml],
-        "@enduml" => return vec![Indentifier::Enduml],
+        "@startuml " => return vec![Indentifier::Startuml],
+        "@enduml " => return vec![Indentifier::Enduml],
         _ => (),
     };
 
-    line.push(' ');
-
     let mut out = Vec::new();
-    let mut object_started = false;
     let mut second_object_started = false;
     let mut ident = String::new();
     let chars = line.chars();
@@ -106,14 +101,14 @@ pub fn parse_line(mut line: String) -> Vec<Indentifier> {
                 }
             }
             '\n' => {
+                        
                 // if ident.trim().len() > 0 {
                 // }
             }
             '{' => {
-                if !object_started {
+                if ident.trim().len() > 0 {
                     out.push(Indentifier::Name(ident.clone()));
                     out.push(Indentifier::StartObject);
-                    object_started = true;
                 } else {
                     second_object_started = true;
                 }
@@ -127,12 +122,11 @@ pub fn parse_line(mut line: String) -> Vec<Indentifier> {
                     match ident.as_str() {
                         "abstract" => out.push(Indentifier::Abstract),
                         "static" => out.push(Indentifier::Static),
-                        _ => (),
+                        _ => println!("!!!!!-------!!!!!!{}", ident),
                     }
                     second_object_started = false;
                 } else {
                     out.push(Indentifier::EndObject);
-                    object_started = false;
                 }
             }
             ')' => {
