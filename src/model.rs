@@ -1,12 +1,11 @@
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Class<'a> {
     pub(crate) name: &'a str,
     attributes: Vec<Attribute<'a>>,
     methods: Vec<Function<'a>>,
     view: View,
     is_abstract: bool,
-    inherits: Option<Box<Class<'a>>>,
+    inherits: Option<&'a Class<'a>>,
 }
 
 impl<'a> Class<'a> {
@@ -16,7 +15,7 @@ impl<'a> Class<'a> {
         methods: Vec<Function<'a>>,
         view: View,
         is_abstract: bool,
-        inherits: Option<Box<Class<'a>>>,
+        inherits: Option<&'a Class<'a>>,
     ) -> Self {
         Self {
             name,
@@ -42,16 +41,16 @@ impl<'a> Class<'a> {
         self
     }
 
-    pub fn inherits(mut self, class: Class<'a>) -> Self {
-        self.inherits = Some(Box::new(class));
+    pub fn inherits(mut self, class: &'a Class<'a>) -> Self {
+        self.inherits = Some(class);
         self
     }
 
-    pub fn as_string(&self) -> String {
+    pub fn to_java(&self) -> String {
         let mut str = String::new();
 
         // name itself
-        str.push_str(self.view.as_string());
+        str.push_str(self.view.to_java());
         str.push(' ');
         if self.is_abstract {
             str.push_str("abstract ");
@@ -65,16 +64,28 @@ impl<'a> Class<'a> {
         // attrbutes
         for p in self.attributes.iter() {
             str.push_str("    ");
-            str.push_str(&p.as_string_as_attribute());
+            str.push_str(&p.to_java_as_attribute());
             str.push_str("\n");
         }
 
         // constructor
-        str.push_str("\n");
+        str.push('\n');
         str.push_str("    ");
-        str.push_str(&self.get_constructor_func().as_string());
+        str.push_str(&self.get_constructor_func().to_java());
         str.pop();
-        str.push_str("\n");
+        str.push('\n');
+        match &self.inherits {
+            Some(class) => {
+                str.push_str("super(");
+                for attr in class.attributes.iter() {
+                    str.push_str(&attr.to_java_as_parameter());
+                    str.push('\n');
+                }
+                str.push(')');
+            },
+            None => (),
+        }
+        str.push('\n');
         for p in self.attributes.iter() {
             str.push_str("        ");
             str.push_str(&format!("this.{} = {}", p.name, p.name));
@@ -87,7 +98,7 @@ impl<'a> Class<'a> {
         // methods
         for f in self.methods.iter() {
             str.push_str("    ");
-            str.push_str(&f.as_string());
+            str.push_str(&f.to_java());
             str.push_str("\n");
         }
 
@@ -126,26 +137,26 @@ impl<'a> Attribute<'a> {
         }
     }
 
-    fn as_string_as_parameter(&self) -> String {
+    fn to_java_as_parameter(&self) -> String {
         let mut str = String::new();
         if self.is_final {
             str.push_str("final ");
         }
-        str.push_str(self.vartype.as_string());
+        str.push_str(self.vartype.to_java());
         str.push(' ');
         str.push_str(self.name);
         str.push_str(", ");
         str
     }
 
-    fn as_string_as_attribute(&self) -> String {
+    fn to_java_as_attribute(&self) -> String {
         let mut str = String::new();
         if self.is_final {
             str.push_str("final ");
         }
-        str.push_str(self.view.as_string());
+        str.push_str(self.view.to_java());
         str.push(' ');
-        str.push_str(self.vartype.as_string());
+        str.push_str(self.vartype.to_java());
         str.push(' ');
         str.push_str(self.name);
         str.push(';');
@@ -154,7 +165,7 @@ impl<'a> Attribute<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Function<'a> {
     name: &'a str,
     view: View,
@@ -180,20 +191,20 @@ impl<'a> Function<'a> {
         }
     }
 
-    pub fn as_string(&self) -> String {
+    pub fn to_java(&self) -> String {
         let mut str = String::new();
         if self.is_abstract {
             str.push_str("abstract");
             str.push(' ');
         }
-        str.push_str(self.view.as_string());
+        str.push_str(self.view.to_java());
         str.push(' ');
-        str.push_str(self.returntype.as_string());
+        str.push_str(self.returntype.to_java());
         str.push(' ');
         str.push_str(self.name);
         str.push('(');
         for p in self.parameters.iter() {
-            str.push_str(&p.as_string_as_parameter());
+            str.push_str(&p.to_java_as_parameter());
         }
         if self.parameters.len() > 0 {
             str.pop();
@@ -211,7 +222,7 @@ pub enum Type<'a> {
 }
 
 impl<'a> Type<'a> {
-    pub fn as_string(&self) -> &'a str {
+    pub fn to_java(&self) -> &'a str {
         match self {
             Self::Other(s) => s,
         }
@@ -227,7 +238,7 @@ pub enum View {
 }
 
 impl View {
-    pub fn as_string<'a>(&self) -> &'a str {
+    pub fn to_java<'a>(&self) -> &'a str {
         match self {
             Self::Normal => "",
             Self::Public => "public",

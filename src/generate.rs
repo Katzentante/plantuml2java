@@ -1,20 +1,23 @@
-use crate::{lexer::{self, Indentifier}, model::{Class, View, Type, Attribute, Function}};
-use std::fs::File;
+use crate::{
+    lexer::{self, Indentifier},
+    model::{Attribute, Class, Function, Type, View},
+};
 use std::io::prelude::*;
 use std::path::Path;
-
+use std::{convert::identity, fs::File};
 
 pub fn generate_files(inputfile: &str, outputlocation: &str) {
     let idents = match lexer::get_identifiers(inputfile) {
         Ok(o) => o,
         Err(e) => panic!("Error during creation of idnets: {}", e),
     };
+    // println!("{:?}", idents);
     let classes = get_objects(&idents);
+    // println!("{:?}", classes);
     for class in classes.iter() {
         write_class(class, outputlocation);
     }
 }
-
 
 // TODO: wait for start/enduml
 // FIX: use abstract properly
@@ -120,8 +123,16 @@ fn get_objects<'a>(indents: &Vec<Indentifier>) -> Vec<Class> {
                 skip = skipk;
                 out.push(class);
             }
-            Indentifier::InheritesLeft => {}
-            Indentifier::InheritesRight => {}
+            Indentifier::InheritesLeft => {
+                // let (masterindex, master, childindex, mut child) =
+                //     match get_master_child(indents, &out, &i) {
+                //         Some((mi, m, ci, c)) => (mi, m, ci, c),
+                //         None => break,
+                //     };
+                //
+                // child = child.inherits(master);
+                // out[childindex] = child;
+            }
             _ => (),
         };
     }
@@ -138,8 +149,9 @@ fn write_class<'a>(class: &Class<'a>, location: &str) {
     };
 
     // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
-    match file.write_all(class.as_string().as_bytes()) {
+    match file.write_all(class.to_java().as_bytes()) {
         Err(why) => panic!("couldn't write to {}: {}", display, why),
         Ok(_) => println!("successfully wrote to {}", display),
     }
 }
+
