@@ -3,9 +3,9 @@ use crate::{
     model::{Attribute, Class, Function, Type, View},
 };
 use log::{error, info};
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::Path;
-use std::{fs::File};
-use std::{io::prelude::*};
 
 pub fn generate_files(inputfile: &str, outputlocation: &str) {
     let idents = match lexer::get_identifiers(inputfile) {
@@ -13,8 +13,10 @@ pub fn generate_files(inputfile: &str, outputlocation: &str) {
         Err(e) => panic!("Error during creation of idnets: {}", e),
     };
     // println!("{:?}", idents);
+
+    // println!("{:?}", idents);
     let classes = get_objects(&idents);
-    println!("{:?}", classes);
+    // println!("{:?}", classes);
     // println!("{:?}", classes);
     for class in classes.iter() {
         write_class(class, outputlocation);
@@ -25,6 +27,7 @@ pub fn generate_files(inputfile: &str, outputlocation: &str) {
 // wait for start/enduml
 // FIXME: Add errors
 // fix Borrowchecke issues
+// fix static
 fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
     info!("{:?}", idents);
     let mut classes = Vec::new();
@@ -50,6 +53,16 @@ fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
                 }
                 _ => error!("Expected name after class identifier, id:{}", i),
             },
+            Identifier::InheritesRight => {
+                let childname = match &idents[i - 1] {
+                    Identifier::Name(name) => name,
+                    _ => continue,
+                };
+                let mastername = match &idents[i + 1] {
+                    Identifier::Name(name) => name,
+                    _ => continue,
+                };
+            }
             _ => (),
         }
         i += 1;
@@ -69,7 +82,6 @@ fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> 
     while i < idents.len() {
         println!("{:?}", idents[i]);
         match &idents[i] {
-            // FIXME use actual index
             Identifier::Public => view = View::Public,
             Identifier::Private => view = View::Private,
             Identifier::Protected => view = View::Protected,
@@ -143,9 +155,17 @@ fn gen_method<'a>(
         i += 1;
     }
     skip += i - index;
+
     (
         skip,
-        Function::new(methodname, view, returntype, paremeters, is_abstract),
+        Function::new(
+            methodname,
+            view,
+            returntype,
+            paremeters,
+            is_abstract,
+            is_static,
+        ),
     )
 }
 

@@ -6,7 +6,7 @@ public class Zauberer {
         this.zauberkraft = zauberkraft
     }
 
-    private stat name() {}
-    public int getAngriffswert() {}
-    public void heilen(Held held) {}
+    static private stat name() {}
+    static public int getAngriffswert() {}
+    static public void heilen(Held held) {}
 }

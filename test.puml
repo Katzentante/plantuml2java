@@ -9,9 +9,11 @@ class Held{
 + addLebenspunkte(faktor : int) : boolean
 + angreifen(monster : Monster, regel : Kampfregel) : void
 + {abstract} getAngriffswert() : int
+- {abstract} useweapon(w : Waffe) : void
 }
 class Zauberer{
 - zauberkraft : int
+
 - {static} name() : stat
 + getAngriffswert() : int
 + heilen(held : Held) : void

@@ -17,4 +17,5 @@ public class Held {
     public boolean addLebenspunkte(int faktor) {}
     public void angreifen(Monster monster, Kampfregel regel) {}
     abstract public int getAngriffswert() {}
+    abstract private void useweapon(Waffe w) {}
 }
