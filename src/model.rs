@@ -120,6 +120,7 @@ impl<'a> Class<'a> {
             Type::Other(""),
             self.attributes.clone(),
             false,
+            false,
         )
     }
 }
@@ -177,6 +178,7 @@ pub struct Function<'a> {
     returntype: Type<'a>,
     parameters: Vec<Attribute<'a>>,
     is_abstract: bool,
+    is_static: bool,
 }
 
 impl<'a> Function<'a> {
@@ -186,6 +188,7 @@ impl<'a> Function<'a> {
         returntype: Type<'a>,
         paremeters: Vec<Attribute<'a>>,
         is_abstract: bool,
+        is_static: bool,
     ) -> Self {
         Self {
             name,
@@ -193,6 +196,7 @@ impl<'a> Function<'a> {
             returntype,
             parameters: paremeters,
             is_abstract,
+            is_static,
         }
     }
 
@@ -200,6 +204,10 @@ impl<'a> Function<'a> {
         let mut str = String::new();
         if self.is_abstract {
             str.push_str("abstract");
+            str.push(' ');
+        }
+        if self.is_static {
+            str.push_str("static");
             str.push(' ');
         }
         str.push_str(self.view.to_java());
