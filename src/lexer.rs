@@ -1,3 +1,4 @@
+use log::info;
 use std::{
     fs::File,
     io::{self, BufRead},
@@ -5,10 +6,10 @@ use std::{
 };
 
 #[derive(Debug)]
-pub enum Indentifier {
+pub enum Identifier {
     Class,
     Interface,
-    Enum,
+    // Enum,
     StartObject,
     EndObject,
     StartMethod,
@@ -32,9 +33,10 @@ pub enum Indentifier {
 }
 
 // TODO merge lists ot one
-pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Indentifier>> {
+pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Identifier>> {
     let path = Path::new(filename);
     let file = File::open(path)?;
+    info!("Opened file {} to parse", filename);
     let mut out = Vec::new();
     let lines: Vec<String> = io::BufReader::new(file)
         .lines()
@@ -53,7 +55,7 @@ pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Indentifier
 }
 
 // TODO remove pub
-fn parse_line(line: &String) -> Vec<Indentifier> {
+fn parse_line(line: &String) -> Vec<Identifier> {
     // ignore comments
     match line.chars().nth(0) {
         Some('\'') => return Vec::new(),
@@ -61,8 +63,8 @@ fn parse_line(line: &String) -> Vec<Indentifier> {
     };
     // println!("{:?}", line);
     match line.as_str() {
-        "@startuml " => return vec![Indentifier::Startuml],
-        "@enduml " => return vec![Indentifier::Enduml],
+        "@startuml " => return vec![Identifier::Startuml],
+        "@enduml " => return vec![Identifier::Enduml],
         _ => (),
     };
 
@@ -73,16 +75,16 @@ fn parse_line(line: &String) -> Vec<Indentifier> {
     for char in chars {
         match char {
             ' ' => match ident.as_str() {
-                "class" => out.push(Indentifier::Class),
-                "interface" => out.push(Indentifier::Interface),
+                "class" => out.push(Identifier::Class),
+                "interface" => out.push(Identifier::Interface),
                 _ => {
                     if ident.trim().len() > 0 {
                         match out.last() {
-                            Some(Indentifier::Variable(_) | Indentifier::EndMethod) => {
-                                out.push(Indentifier::Type(ident.clone()))
+                            Some(Identifier::Variable(_) | Identifier::EndMethod) => {
+                                out.push(Identifier::Type(ident.clone()))
                             }
                             _ => {
-                                out.push(Indentifier::Name(ident.clone()));
+                                out.push(Identifier::Name(ident.clone()));
                                 continue;
                             }
                         }
@@ -91,13 +93,13 @@ fn parse_line(line: &String) -> Vec<Indentifier> {
                     }
                 }
             },
-            '+' => out.push(Indentifier::Public),
-            '#' => out.push(Indentifier::Protected),
-            '-' => out.push(Indentifier::Private),
+            '+' => out.push(Identifier::Public),
+            '#' => out.push(Identifier::Protected),
+            '-' => out.push(Identifier::Private),
             ':' => {
                 if ident.trim().len() > 0 {
                     out.pop();
-                    out.push(Indentifier::Variable(ident.clone()))
+                    out.push(Identifier::Variable(ident.clone()))
                 }
             }
             '\n' => {
@@ -107,37 +109,37 @@ fn parse_line(line: &String) -> Vec<Indentifier> {
             }
             '{' => {
                 if ident.trim().len() > 0 {
-                    out.push(Indentifier::Name(ident.clone()));
-                    out.push(Indentifier::StartObject);
+                    out.push(Identifier::Name(ident.clone()));
+                    out.push(Identifier::StartObject);
                 } else {
                     second_object_started = true;
                 }
             }
             '(' => {
-                out.push(Indentifier::Name(ident.clone()));
-                out.push(Indentifier::StartMethod)
+                out.push(Identifier::Name(ident.clone()));
+                out.push(Identifier::StartMethod)
             }
             '}' => {
                 if second_object_started {
                     match ident.as_str() {
-                        "abstract" => out.push(Indentifier::Abstract),
-                        "static" => out.push(Indentifier::Static),
+                        "abstract" => out.push(Identifier::Abstract),
+                        "static" => out.push(Identifier::Static),
                         _ => (),
                     }
                     second_object_started = false;
                 } else {
-                    out.push(Indentifier::EndObject);
+                    out.push(Identifier::EndObject);
                 }
             }
             ')' => {
                 if ident.trim().len() > 0 {
-                    out.push(Indentifier::Type(ident.clone()));
+                    out.push(Identifier::Type(ident.clone()));
                 }
-                out.push(Indentifier::EndMethod)
+                out.push(Identifier::EndMethod)
             }
-            ',' => out.push(Indentifier::Type(ident.clone())),
-            '>' => out.push(Indentifier::InheritesRight),
-            '<' => out.push(Indentifier::InheritesLeft),
+            ',' => out.push(Identifier::Type(ident.clone())),
+            '>' => out.push(Identifier::InheritesRight),
+            '<' => out.push(Identifier::InheritesLeft),
             _ => {
                 ident.push(char.clone());
                 continue;

@@ -46,6 +46,11 @@ impl<'a> Class<'a> {
         self
     }
 
+    pub fn with_abstract(mut self, is_abstract: bool) -> Self {
+        self.is_abstract = is_abstract;
+        self
+    }
+
     pub fn to_java(&self) -> String {
         let mut str = String::new();
 

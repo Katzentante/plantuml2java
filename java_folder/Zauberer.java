@@ -1,12 +1,12 @@
 public class Zauberer {
-     int zauberkraft;
+    private int zauberkraft;
 
     public  Zauberer(int zauberkraft) {
 
         this.zauberkraft = zauberkraft
     }
 
-     stat name() {}
-     int getAngriffswert() {}
-     void heilen(Held held) {}
+    private stat name() {}
+    public int getAngriffswert() {}
+    public void heilen(Held held) {}
 }

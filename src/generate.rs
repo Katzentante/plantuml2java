@@ -1,142 +1,152 @@
 use crate::{
-    lexer::{self, Indentifier},
+    lexer::{self, Identifier},
     model::{Attribute, Class, Function, Type, View},
 };
-use std::io::prelude::*;
+use log::{error, info};
 use std::path::Path;
-use std::{convert::identity, fs::File};
+use std::{fs::File};
+use std::{io::prelude::*};
 
 pub fn generate_files(inputfile: &str, outputlocation: &str) {
     let idents = match lexer::get_identifiers(inputfile) {
-        Ok(o) => o,
+        Ok(idents) => idents,
         Err(e) => panic!("Error during creation of idnets: {}", e),
     };
     // println!("{:?}", idents);
     let classes = get_objects(&idents);
+    println!("{:?}", classes);
     // println!("{:?}", classes);
     for class in classes.iter() {
         write_class(class, outputlocation);
     }
 }
 
-// TODO: wait for start/enduml
-// FIX: use abstract properly
-fn get_objects<'a>(indents: &Vec<Indentifier>) -> Vec<Class> {
-    // wait for class -> get data about class until object end -> construct
-    // class with data
-    let mut out = Vec::new();
-    let mut skip = 0;
-    for i in 0..indents.len() {
-        if skip > i {
-            // println!("in i skip loop");
-            continue;
-        }
-        match indents[i] {
-            Indentifier::Class => {
-                let mut classname = "Klasse";
-                match &indents[i + 1] {
-                    Indentifier::Name(n) => classname = n,
-                    _ => (),
-                }
-                let mut class = Class::build(&classname, View::Public, false);
-                let mut is_abstract = false;
+// TODO:
+// wait for start/enduml
+// FIXME: Add errors
+// fix Borrowchecke issues
+fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
+    info!("{:?}", idents);
+    let mut classes = Vec::new();
+    let mut i = 0;
+    // let mut iditer = idents.iter().peekable();
 
-                let mut skipk = i + 3;
-                for k in (i + 3)..indents.len() {
-                    if skipk > k && skipk < indents.len() {
-                        // println!("in k skip loop skipk:{} k:{} idnet:{}", skipk, k, indents.len());
-                        continue;
-                    }
-
-                    let mut view = View::Normal;
-                    match &indents[k] {
-                        Indentifier::Public => view = View::Public,
-                        Indentifier::Private => view = View::Private,
-                        Indentifier::Protected => view = View::Private,
-                        Indentifier::Abstract => is_abstract = true,
-                        // add attribute if var is found
-                        Indentifier::Variable(var) => {
-                            match &indents[k + 1] {
-                                Indentifier::Type(vartype) => {
-                                    class = class.with_attribute(Attribute::new(
-                                        view,
-                                        var,
-                                        Type::Other(vartype),
-                                        false,
-                                    ));
-                                    is_abstract = false;
-                                }
-                                _ => (),
-                            };
+    while i < idents.len() {
+        match &idents[i] {
+            Identifier::Class => match &idents[i + 1] {
+                Identifier::Name(name) => {
+                    match &idents[i + 2] {
+                        Identifier::StartObject => {
+                            let (skip, class) = gen_class(idents, i + 3, name);
+                            // let mut class = Class::build(name, View::Public, false);
+                            i += skip + 3;
+                            classes.push(class);
                         }
-                        // add method if name is found
-                        Indentifier::Name(name) => {
-                            let mut parameters = Vec::new();
-                            let mut skipm = k + 2;
-                            for m in (k + 2)..indents.len() {
-                                if skipm > m {
-                                    // println!("in m skip loop");
-                                    continue;
-                                }
-
-                                match &indents[m] {
-                                    Indentifier::Variable(var) => match &indents[m + 1] {
-                                        Indentifier::Type(vartype) => {
-                                            parameters.push(Attribute::new(
-                                                View::Normal,
-                                                var,
-                                                Type::Other(vartype),
-                                                false,
-                                            ));
-                                            skipm += 1;
-                                        }
-                                        _ => (),
-                                    },
-                                    Indentifier::EndMethod => {
-                                        let mut returntype = Type::Other("");
-                                        // chagne returntype of method if there is one
-                                        match &indents[m + 1] {
-                                            Indentifier::Type(methodtype) => {
-                                                returntype = Type::Other(methodtype);
-                                            }
-                                            _ => (),
-                                        }
-                                        class = class.with_method(Function::new(
-                                            name,
-                                            view,
-                                            returntype,
-                                            parameters.clone(),
-                                            is_abstract,
-                                        ));
-                                        is_abstract = false;
-                                        break;
-                                    }
-                                    _ => continue,
-                                }
-                            }
-                            skipk = skipm;
-                        }
-                        Indentifier::EndObject => break,
-                        _ => continue,
-                    }
+                        _ => error!(
+                            "Expected start of object after name class identifier, id:{}",
+                            i
+                        ),
+                    };
                 }
-                skip = skipk;
-                out.push(class);
-            }
-            Indentifier::InheritesLeft => {
-                // let (masterindex, master, childindex, mut child) =
-                //     match get_master_child(indents, &out, &i) {
-                //         Some((mi, m, ci, c)) => (mi, m, ci, c),
-                //         None => break,
-                //     };
-                //
-                // child = child.inherits(master);
-                // out[childindex] = child;
-            }
+                _ => error!("Expected name after class identifier, id:{}", i),
+            },
             _ => (),
-        };
+        }
+        i += 1;
     }
-    out
+
+    classes
+}
+
+fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> (usize, Class<'a>) {
+    let mut class = Class::build(classname, View::Public, false);
+    let mut skip = 0;
+    let mut is_abstract = false;
+    let mut is_static = false;
+    let mut i = index;
+    let mut view = View::Normal;
+
+    while i < idents.len() {
+        println!("{:?}", idents[i]);
+        match &idents[i] {
+            // FIXME use actual index
+            Identifier::Public => view = View::Public,
+            Identifier::Private => view = View::Private,
+            Identifier::Protected => view = View::Protected,
+            Identifier::Abstract => is_abstract = true,
+            Identifier::Static => is_static = true,
+            Identifier::Variable(varname) => {
+                match &idents[i + 1] {
+                    Identifier::Type(vartype) => {
+                        class = class.with_attribute(Attribute::new(
+                            view,
+                            varname,
+                            Type::Other(vartype),
+                            false,
+                        ));
+                    }
+                    _ => error!("Unexpected Identifier after Variable"),
+                };
+                i += 1;
+                skip += 1;
+            }
+            Identifier::StartMethod => match &idents[i - 1] {
+                Identifier::Name(methodname) => {
+                    let (mskip, method) =
+                        gen_method(idents, i + 1, methodname, view, is_abstract, is_static);
+                    i += mskip;
+                    skip += mskip;
+                    class = class.with_method(method);
+                }
+                _ => error!("Expected methodname beofre methodstart id:{}", i),
+            },
+            Identifier::EndObject => break,
+            _ => (),
+        }
+        i += 1;
+    }
+
+    (skip, class)
+}
+
+fn gen_method<'a>(
+    idents: &'a [Identifier],
+    index: usize,
+    methodname: &'a str,
+    view: View,
+    is_abstract: bool,
+    is_static: bool,
+) -> (usize, Function<'a>) {
+    let mut paremeters = Vec::new();
+    let mut skip = 0;
+    let mut i = index;
+    let mut returntype = Type::Other("");
+
+    while i < idents.len() {
+        match &idents[i] {
+            Identifier::Variable(varname) => match &idents[i + 1] {
+                Identifier::Type(typename) => {
+                    paremeters.push(Attribute::new(view, varname, Type::Other(typename), false))
+                }
+                _ => error!("Expected type after var name"),
+            },
+            Identifier::EndMethod => match &idents[i + 1] {
+                Identifier::Type(returnname) => {
+                    returntype = Type::Other(returnname);
+                    i += 1;
+                    break;
+                }
+                _ => (),
+            },
+            _ => (),
+        }
+        i += 1;
+    }
+    skip += i - index;
+    (
+        skip,
+        Function::new(methodname, view, returntype, paremeters, is_abstract),
+    )
 }
 
 fn write_class<'a>(class: &Class<'a>, location: &str) {
@@ -151,7 +161,6 @@ fn write_class<'a>(class: &Class<'a>, location: &str) {
     // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
     match file.write_all(class.to_java().as_bytes()) {
         Err(why) => panic!("couldn't write to {}: {}", display, why),
-        Ok(_) => println!("successfully wrote to {}", display),
+        Ok(_) => info!("successfully wrote to {}", display),
     }
 }
-
