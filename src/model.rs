@@ -5,7 +5,7 @@ pub struct Class<'a> {
     methods: Vec<Function<'a>>,
     view: View,
     is_abstract: bool,
-    inherits: Option<&'a Class<'a>>,
+    inherits: Option<Box<Class<'a>>>,
 }
 
 impl<'a> Class<'a> {
@@ -15,7 +15,7 @@ impl<'a> Class<'a> {
         methods: Vec<Function<'a>>,
         view: View,
         is_abstract: bool,
-        inherits: Option<&'a Class<'a>>,
+        inherits: Option<Box<Class<'a>>>,
     ) -> Self {
         Self {
             name,
@@ -41,8 +41,8 @@ impl<'a> Class<'a> {
         self
     }
 
-    pub fn inherits(mut self, class: &'a Class<'a>) -> Self {
-        self.inherits = Some(class);
+    pub fn inherits(mut self, class: Class<'a>) -> Self {
+        self.inherits = Some(Box::new(class));
         self
     }
 
@@ -63,6 +63,13 @@ impl<'a> Class<'a> {
         str.push_str("class ");
         str.push_str(self.name);
         str.push(' ');
+        match &self.inherits {
+            Some(c) => {
+                str.push_str("extends ");
+                str.push_str(c.name);
+            }
+            None => (),
+        }
         str.push('{');
         str.push_str("\n");
 
@@ -81,13 +88,17 @@ impl<'a> Class<'a> {
         str.push('\n');
         match &self.inherits {
             Some(class) => {
-                str.push_str("super(");
+                str.push_str("        super(");
                 for attr in class.attributes.iter() {
                     str.push_str(&attr.to_java_as_parameter());
-                    str.push('\n');
+                }
+                if class.attributes.len() > 0 {
+                    str.pop();
+                    str.pop();
                 }
                 str.push(')');
-            },
+                str.push(';');
+            }
             None => (),
         }
         str.push('\n');
@@ -114,18 +125,31 @@ impl<'a> Class<'a> {
     }
 
     pub fn get_constructor_func(&self) -> Function<'a> {
+        let mut attributes = self.attributes.clone();
+        match &self.inherits {
+            Some(c) => {
+                for attr in c.attributes.iter() {
+                    attributes.push(*attr);
+                }
+            },
+            None => (),
+        }
         Function::new(
             self.name,
             self.view.clone(),
             Type::Other(""),
-            self.attributes.clone(),
+            attributes,
             false,
             false,
         )
     }
 
-    pub fn set_inherits(&mut self, master: &'a Class) {
-        self.inherits = Some(master);
+    pub fn set_inherits(&mut self, master: Class<'a>) {
+        self.inherits = Some(Box::new(master));
+    }
+
+    pub fn get_inherits(&self) -> Option<Box<Class>> {
+         self.inherits.clone()
     }
 }
 
