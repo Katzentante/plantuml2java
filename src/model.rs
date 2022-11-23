@@ -93,7 +93,7 @@ impl<'a> Class<'a> {
         str.push('\n');
         for p in self.attributes.iter() {
             str.push_str("        ");
-            str.push_str(&format!("this.{} = {}", p.name, p.name));
+            str.push_str(&format!("this.{} = {};", p.name, p.name));
             str.push_str("\n");
         }
         str.push_str("    ");
@@ -202,6 +202,8 @@ impl<'a> Function<'a> {
 
     pub fn to_java(&self) -> String {
         let mut str = String::new();
+        str.push_str(self.view.to_java());
+        str.push(' ');
         if self.is_abstract {
             str.push_str("abstract");
             str.push(' ');
@@ -210,8 +212,6 @@ impl<'a> Function<'a> {
             str.push_str("static");
             str.push(' ');
         }
-        str.push_str(self.view.to_java());
-        str.push(' ');
         str.push_str(self.returntype.to_java());
         str.push(' ');
         str.push_str(self.name);
