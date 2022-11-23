@@ -53,21 +53,31 @@ fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
                 _ => error!("Expected name after class identifier, id:{}", i),
             },
             Identifier::InheritesLeft => {
-                let childname = match &idents[i - 1] {
+                let mastername = match &idents[i - 1] {
                     Identifier::Name(name) => name,
                     _ => continue,
                 };
-                let mut mastername = "";
+                let mut childname = "";
                 for j in i..idents.len() {
                     match &idents[j] {
                         Identifier::Name(name) => {
-                            mastername = name;
+                            childname = name;
                             break;
                         }
                         _ => continue,
                     };
                 }
-                println!("{}<|--{}", childname, mastername);
+                info!("{}<|--{}", mastername, childname);
+                let master = match classes.iter().find(|c| c.name == mastername) {
+                    Some(c) => c.clone(),
+                    None => panic!("Expected master class {}", mastername),
+                };
+                let child = match classes.iter_mut().find(|c| c.name == childname) {
+                    Some(c) => c,
+                    None => panic!("Expected child class {}", childname),
+                };
+                child.set_inherits(master);
+                // info!("{:?}", child.get_inherits().unwrap());
             }
             _ => (),
         }
