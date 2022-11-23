@@ -3,9 +3,9 @@ use crate::{
     model::{Attribute, Class, Function, Type, View},
 };
 use log::{error, info};
-use std::{io::prelude::*, borrow::Borrow};
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::Path;
-use std::{borrow::BorrowMut, fs::File};
 
 pub fn generate_files(inputfile: &str, outputlocation: &str) {
     let idents = match lexer::get_identifiers(inputfile) {
@@ -91,7 +91,10 @@ fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> 
             Identifier::Public => view = View::Public,
             Identifier::Private => view = View::Private,
             Identifier::Protected => view = View::Protected,
-            Identifier::Abstract => is_abstract = true,
+            Identifier::Abstract => {
+                is_abstract = true;
+                class = class.with_abstract(true)
+            }
             Identifier::Static => is_static = true,
             Identifier::Variable(varname) => {
                 match &idents[i + 1] {
@@ -105,6 +108,9 @@ fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> 
                     }
                     _ => error!("Unexpected Identifier after Variable"),
                 };
+                view = View::Normal;
+                is_static = false;
+                is_abstract = false;
                 i += 1;
                 skip += 1;
             }
@@ -115,6 +121,9 @@ fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> 
                     i += mskip;
                     skip += mskip;
                     class = class.with_method(method);
+                    view = View::Normal;
+                    is_static = false;
+                    is_abstract = false;
                 }
                 _ => error!("Expected methodname beofre methodstart id:{}", i),
             },
