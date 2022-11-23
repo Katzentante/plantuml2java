@@ -258,7 +258,7 @@ impl<'a> Function<'a> {
         }
         match self.is_abstract {
             true => str.push_str(");"),
-            false => str.push_str(") {}"),
+            false => str.push_str(") {\n    }"),
         }
 
         str

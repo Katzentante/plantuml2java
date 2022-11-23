@@ -26,7 +26,6 @@ pub fn generate_files(inputfile: &str, outputlocation: &str) {
 // TODO:
 // wait for start/enduml
 // FIXME: Add errors
-// fix Borrowchecke issues
 fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
     info!("{:?}", idents);
     let mut classes = Vec::new();
