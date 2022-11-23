@@ -3,9 +3,9 @@ use crate::{
     model::{Attribute, Class, Function, Type, View},
 };
 use log::{error, info};
-use std::fs::File;
-use std::io::prelude::*;
+use std::{io::prelude::*, borrow::Borrow};
 use std::path::Path;
+use std::{borrow::BorrowMut, fs::File};
 
 pub fn generate_files(inputfile: &str, outputlocation: &str) {
     let idents = match lexer::get_identifiers(inputfile) {
@@ -27,7 +27,6 @@ pub fn generate_files(inputfile: &str, outputlocation: &str) {
 // wait for start/enduml
 // FIXME: Add errors
 // fix Borrowchecke issues
-// fix static
 fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
     info!("{:?}", idents);
     let mut classes = Vec::new();
@@ -53,15 +52,22 @@ fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
                 }
                 _ => error!("Expected name after class identifier, id:{}", i),
             },
-            Identifier::InheritesRight => {
+            Identifier::InheritesLeft => {
                 let childname = match &idents[i - 1] {
                     Identifier::Name(name) => name,
                     _ => continue,
                 };
-                let mastername = match &idents[i + 1] {
-                    Identifier::Name(name) => name,
-                    _ => continue,
-                };
+                let mut mastername = "";
+                for j in i..idents.len() {
+                    match &idents[j] {
+                        Identifier::Name(name) => {
+                            mastername = name;
+                            break;
+                        }
+                        _ => continue,
+                    };
+                }
+                println!("{}<|--{}", childname, mastername);
             }
             _ => (),
         }
@@ -80,7 +86,7 @@ fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> 
     let mut view = View::Normal;
 
     while i < idents.len() {
-        println!("{:?}", idents[i]);
+        // println!("{:?}", idents[i]);
         match &idents[i] {
             Identifier::Public => view = View::Public,
             Identifier::Private => view = View::Private,

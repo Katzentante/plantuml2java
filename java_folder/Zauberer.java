@@ -3,10 +3,10 @@ public class Zauberer {
 
     public  Zauberer(int zauberkraft) {
 
-        this.zauberkraft = zauberkraft
+        this.zauberkraft = zauberkraft;
     }
 
-    static private stat name() {}
-    static public int getAngriffswert() {}
-    static public void heilen(Held held) {}
+    private static stat name() {}
+    public static int getAngriffswert() {}
+    public static void heilen(Held held) {}
 }

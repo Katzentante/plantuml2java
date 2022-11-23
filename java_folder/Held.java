@@ -7,15 +7,15 @@ public class Held {
 
     public  Held(String name, int stärke, int lebenspunkte, int angriffswert, Waffe waffe) {
 
-        this.name = name
-        this.stärke = stärke
-        this.lebenspunkte = lebenspunkte
-        this.angriffswert = angriffswert
-        this.waffe = waffe
+        this.name = name;
+        this.stärke = stärke;
+        this.lebenspunkte = lebenspunkte;
+        this.angriffswert = angriffswert;
+        this.waffe = waffe;
     }
 
     public boolean addLebenspunkte(int faktor) {}
     public void angreifen(Monster monster, Kampfregel regel) {}
-    abstract public int getAngriffswert() {}
-    abstract private void useweapon(Waffe w) {}
+    public abstract int getAngriffswert() {}
+    private abstract void useweapon(Waffe w) {}
 }

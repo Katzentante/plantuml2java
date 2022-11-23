@@ -123,6 +123,10 @@ impl<'a> Class<'a> {
             false,
         )
     }
+
+    pub fn set_inherits(&mut self, master: &'a Class) {
+        self.inherits = Some(master);
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
