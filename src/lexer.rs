@@ -77,6 +77,7 @@ fn parse_line(line: &String) -> Vec<Identifier> {
             ' ' => match ident.as_str() {
                 "class" => out.push(Identifier::Class),
                 "interface" => out.push(Identifier::Interface),
+                "abstract" => out.push(Identifier::Abstract),
                 _ => {
                     if ident.trim().len() > 0 {
                         match out.last() {

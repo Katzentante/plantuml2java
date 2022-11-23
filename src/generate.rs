@@ -3,11 +3,15 @@ use crate::{
     model::{Attribute, Class, Function, Type, View},
 };
 use log::{error, info};
-use std::fs::File;
+use std::fs::{File, self};
 use std::io::prelude::*;
 use std::path::Path;
 
 pub fn generate_files(inputfile: &str, outputlocation: &str) {
+    match fs::create_dir_all(outputlocation) {
+        Ok(_) => (),
+        Err(e) => panic!("Error while creating folder {} : {}", outputlocation, e),
+    }
     let idents = match lexer::get_identifiers(inputfile) {
         Ok(idents) => idents,
         Err(e) => panic!("Error during creation of idnets: {}", e),
@@ -29,16 +33,19 @@ pub fn generate_files(inputfile: &str, outputlocation: &str) {
 fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
     info!("{:?}", idents);
     let mut classes = Vec::new();
+    let mut is_abstract = false;
     let mut i = 0;
     // let mut iditer = idents.iter().peekable();
 
     while i < idents.len() {
         match &idents[i] {
+            Identifier::Abstract => is_abstract = true,
             Identifier::Class => match &idents[i + 1] {
                 Identifier::Name(name) => {
                     match &idents[i + 2] {
                         Identifier::StartObject => {
-                            let (skip, class) = gen_class(idents, i + 3, name);
+                            let (skip, mut class) = gen_class(idents, i + 3, name);
+                            class = class.with_abstract(is_abstract);
                             // let mut class = Class::build(name, View::Public, false);
                             i += skip + 3;
                             classes.push(class);
