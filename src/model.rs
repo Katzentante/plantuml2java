@@ -54,7 +54,7 @@ impl<'a> Class<'a> {
     pub fn to_java(&self) -> String {
         let mut str = String::new();
 
-        // name itself
+        // top name and class dfinition
         str.push_str(self.view.to_java());
         str.push(' ');
         if self.is_abstract {
@@ -80,12 +80,14 @@ impl<'a> Class<'a> {
             str.push_str("\n");
         }
 
-        // constructor
+        // constructor func
+        // top row
         str.push('\n');
         str.push_str("    ");
         str.push_str(&self.get_constructor_func().to_java());
         str.pop();
         str.push('\n');
+        // super func if inherits
         match &self.inherits {
             Some(class) => {
                 str.push_str("        super(");
@@ -102,6 +104,7 @@ impl<'a> Class<'a> {
             None => (),
         }
         str.push('\n');
+        // normal this. thisngs
         for p in self.attributes.iter() {
             str.push_str("        ");
             str.push_str(&format!("this.{} = {};", p.name, p.name));
