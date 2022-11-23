@@ -67,6 +67,7 @@ impl<'a> Class<'a> {
             Some(c) => {
                 str.push_str("extends ");
                 str.push_str(c.name);
+                str.push(' ');
             }
             None => (),
         }

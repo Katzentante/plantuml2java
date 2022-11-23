@@ -84,6 +84,33 @@ fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
                     None => panic!("Expected child class {}", childname),
                 };
                 child.set_inherits(master);
+            }
+            Identifier::InheritesRight => {
+                let mastername = match &idents[i + 1] {
+                    Identifier::Name(name) => name,
+                    _ => continue,
+                };
+                let mut childname = "";
+                for j in (0..i).rev() {
+                    info!("test rightinherit");
+                    match &idents[j] {
+                        Identifier::Name(name) => {
+                            childname = name;
+                            break;
+                        }
+                        _ => continue,
+                    };
+                }
+                info!("{}<|--{}", mastername, childname);
+                let master = match classes.iter().find(|c| c.name == mastername) {
+                    Some(c) => c.clone(),
+                    None => panic!("Expected master class {}", mastername),
+                };
+                let child = match classes.iter_mut().find(|c| c.name == childname) {
+                    Some(c) => c,
+                    None => panic!("Expected child class {}", childname),
+                };
+                child.set_inherits(master);
                 // info!("{:?}", child.get_inherits().unwrap());
             }
             _ => (),
