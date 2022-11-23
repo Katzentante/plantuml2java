@@ -49,6 +49,7 @@ fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
                             // let mut class = Class::build(name, View::Public, false);
                             i += skip + 3;
                             classes.push(class);
+                            is_abstract = false;
                         }
                         _ => error!(
                             "Expected start of object after name class identifier, id:{}",
