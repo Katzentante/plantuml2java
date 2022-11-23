@@ -92,7 +92,9 @@ impl<'a> Class<'a> {
             Some(class) => {
                 str.push_str("        super(");
                 for attr in class.attributes.iter() {
-                    str.push_str(&attr.to_java_as_parameter());
+                    str.push_str(&attr.name);
+                    str.push(',');
+                    str.push(' ');
                 }
                 if class.attributes.len() > 0 {
                     str.pop();
