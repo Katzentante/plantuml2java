@@ -136,7 +136,7 @@ impl<'a> Class<'a> {
                 for attr in c.attributes.iter() {
                     attributes.push(*attr);
                 }
-            },
+            }
             None => (),
         }
         Function::new(
@@ -154,7 +154,7 @@ impl<'a> Class<'a> {
     }
 
     pub fn get_inherits(&self) -> Option<Box<Class>> {
-         self.inherits.clone()
+        self.inherits.clone()
     }
 }
 
@@ -256,7 +256,10 @@ impl<'a> Function<'a> {
             str.pop();
             str.pop();
         }
-        str.push_str(") {}");
+        match self.is_abstract {
+            true => str.push_str(");"),
+            false => str.push_str(") {}"),
+        }
 
         str
     }
