@@ -107,6 +107,7 @@ impl<'a> Class<'a> {
             None => (),
         }
         str.push('\n');
+
         // normal this. thisngs
         for p in self.attributes.iter() {
             str.push_str("        ");

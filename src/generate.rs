@@ -3,11 +3,11 @@ use crate::{
     model::{Attribute, Class, Function, Type, View},
 };
 use log::{error, info};
-use std::fs::{File, self};
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
 
-pub fn generate_files(inputfile: &str, outputlocation: &str) {
+pub fn generate_files(inputfile: &str, outputlocation: &str) -> Result<(), std::io::Error> {
     match fs::create_dir_all(outputlocation) {
         Ok(_) => (),
         Err(e) => panic!("Error while creating folder {} : {}", outputlocation, e),
@@ -16,21 +16,22 @@ pub fn generate_files(inputfile: &str, outputlocation: &str) {
         Ok(idents) => idents,
         Err(e) => panic!("Error during creation of idnets: {}", e),
     };
-    // println!("{:?}", idents);
-
-    // println!("{:?}", idents);
-    let classes = get_objects(&idents);
-    // println!("{:?}", classes);
-    // println!("{:?}", classes);
+    let classes = match get_classes(&idents) {
+        Ok(it) => it,
+        Err(err) => {
+            error!("{}", err);
+            return Ok(());
+        },
+    };
     for class in classes.iter() {
-        write_class(class, outputlocation);
+        write_class(class, outputlocation)?
     }
+    Ok(())
 }
 
 // TODO:
 // wait for start/enduml
-// FIXME: Add errors
-fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
+fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, GeneratorError> {
     info!("{:?}", idents);
     let mut classes = Vec::new();
     let mut is_abstract = false;
@@ -44,25 +45,33 @@ fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
                 Identifier::Name(name) => {
                     match &idents[i + 2] {
                         Identifier::StartObject => {
-                            let (skip, mut class) = gen_class(idents, i + 3, name);
+                            let (skip, mut class) = gen_class(idents, i + 3, name)?;
                             class = class.with_abstract(is_abstract);
                             // let mut class = Class::build(name, View::Public, false);
                             i += skip + 3;
                             classes.push(class);
                             is_abstract = false;
                         }
-                        _ => error!(
-                            "Expected start of object after name class identifier, id:{}",
-                            i
-                        ),
+                        _ => {
+                            let s =
+                                format!("Expected Start of object after the class name {{name}}");
+                            return Err(GeneratorError::UnexpectedIdentifier(s));
+                        }
                     };
                 }
-                _ => error!("Expected name after class identifier, id:{}", i),
+                _ => {
+                    let s = format!("Expected name after class statement");
+                    return Err(GeneratorError::UnexpectedIdentifier(s));
+                }
             },
             Identifier::InheritesLeft => {
                 let mastername = match &idents[i - 1] {
                     Identifier::Name(name) => name,
-                    _ => continue,
+                    _ => {
+                        return Err(GeneratorError::UnexpectedIdentifier(
+                            "Expected Name to be iherited from".to_string(),
+                        ))
+                    }
                 };
                 let mut childname = "";
                 for j in i..idents.len() {
@@ -71,57 +80,85 @@ fn get_objects<'a>(idents: &'a [Identifier]) -> Vec<Class<'a>> {
                             childname = name;
                             break;
                         }
-                        _ => continue,
+                        // _ => {
+                        //     return Err(GeneratorError::UnexpectedIdentifier(
+                        //         "Expected Name to inherit {mastername}".to_string(),
+                        //     ))
+                        // }
+                        _ => continue, 
                     };
                 }
                 info!("{}<|--{}", mastername, childname);
                 let master = match classes.iter().find(|c| c.name == mastername) {
                     Some(c) => c.clone(),
-                    None => panic!("Expected master class {}", mastername),
+                    None => {
+                        let s = format!("class {mastername} doesn't exist to be inherited");
+                        return Err(GeneratorError::UnexpectedIdentifier(s));
+                    }
                 };
                 let child = match classes.iter_mut().find(|c| c.name == childname) {
                     Some(c) => c,
-                    None => panic!("Expected child class {}", childname),
+                    None => {
+                        let s = format!("class {childname} doesn't exist to inherit {mastername}");
+                        return Err(GeneratorError::UnexpectedIdentifier(s));
+                    }
                 };
                 child.set_inherits(master);
             }
             Identifier::InheritesRight => {
                 let mastername = match &idents[i + 1] {
                     Identifier::Name(name) => name,
-                    _ => continue,
+                    _ => {
+                        return Err(GeneratorError::UnexpectedIdentifier(
+                            "Expected Name to be iherited from".to_string(),
+                        ))
+                    }
                 };
                 let mut childname = "";
                 for j in (0..i).rev() {
-                    info!("test rightinherit");
                     match &idents[j] {
                         Identifier::Name(name) => {
                             childname = name;
                             break;
                         }
+                        // _ => {
+                        //     return Err(GeneratorError::UnexpectedIdentifier(
+                        //         "Expected Name to inherit {mastername}".to_string(),
+                        //     ))
+                        // }
                         _ => continue,
                     };
                 }
                 info!("{}<|--{}", mastername, childname);
                 let master = match classes.iter().find(|c| c.name == mastername) {
                     Some(c) => c.clone(),
-                    None => panic!("Expected master class {}", mastername),
+                    None => {
+                        let s = format!("class {mastername} doesn't exist to be inherited");
+                        return Err(GeneratorError::UnexpectedIdentifier(s));
+                    }
                 };
                 let child = match classes.iter_mut().find(|c| c.name == childname) {
                     Some(c) => c,
-                    None => panic!("Expected child class {}", childname),
+                    None => {
+                        let s = format!("class {childname} doesn't exist to inherit {mastername}");
+                        return Err(GeneratorError::UnexpectedIdentifier(s));
+                    }
                 };
                 child.set_inherits(master);
-                // info!("{:?}", child.get_inherits().unwrap());
             }
             _ => (),
         }
         i += 1;
     }
 
-    classes
+    Ok(classes)
 }
 
-fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> (usize, Class<'a>) {
+fn gen_class<'a>(
+    idents: &'a [Identifier],
+    index: usize,
+    classname: &'a str,
+) -> Result<(usize, Class<'a>), GeneratorError> {
     let mut class = Class::build(classname, View::Public, false);
     let mut skip = 0;
     let mut is_abstract = false;
@@ -130,7 +167,6 @@ fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> 
     let mut view = View::Normal;
 
     while i < idents.len() {
-        // println!("{:?}", idents[i]);
         match &idents[i] {
             Identifier::Public => view = View::Public,
             Identifier::Private => view = View::Private,
@@ -150,7 +186,13 @@ fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> 
                             false,
                         ));
                     }
-                    _ => error!("Unexpected Identifier after Variable"),
+                    _ => {
+                        let s = format!(
+                            "Expected Identifier \"Type\" after Variable \"{}\"",
+                            varname
+                        );
+                        return Err(GeneratorError::UnexpectedIdentifier(s));
+                    }
                 };
                 view = View::Normal;
                 is_static = false;
@@ -161,7 +203,7 @@ fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> 
             Identifier::StartMethod => match &idents[i - 1] {
                 Identifier::Name(methodname) => {
                     let (mskip, method) =
-                        gen_method(idents, i + 1, methodname, view, is_abstract, is_static);
+                        gen_method(idents, i + 1, methodname, view, is_abstract, is_static)?;
                     i += mskip;
                     skip += mskip;
                     class = class.with_method(method);
@@ -169,7 +211,10 @@ fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> 
                     is_static = false;
                     is_abstract = false;
                 }
-                _ => error!("Expected methodname beofre methodstart id:{}", i),
+                _ => {
+                    let s = format!("Expected a method name");
+                    return Err(GeneratorError::UnexpectedIdentifier(s));
+                }
             },
             Identifier::EndObject => break,
             _ => (),
@@ -177,7 +222,7 @@ fn gen_class<'a>(idents: &'a [Identifier], index: usize, classname: &'a str) -> 
         i += 1;
     }
 
-    (skip, class)
+    Ok((skip, class))
 }
 
 fn gen_method<'a>(
@@ -187,7 +232,7 @@ fn gen_method<'a>(
     view: View,
     is_abstract: bool,
     is_static: bool,
-) -> (usize, Function<'a>) {
+) -> Result<(usize, Function<'a>), GeneratorError> {
     let mut paremeters = Vec::new();
     let mut skip = 0;
     let mut i = index;
@@ -199,7 +244,13 @@ fn gen_method<'a>(
                 Identifier::Type(typename) => {
                     paremeters.push(Attribute::new(view, varname, Type::Other(typename), false))
                 }
-                _ => error!("Expected type after var name"),
+                _ => {
+                    let s = format!(
+                        "Expected Identifier \"Type\" after Variable \"{}\"",
+                        varname
+                    );
+                    return Err(GeneratorError::UnexpectedIdentifier(s));
+                }
             },
             Identifier::EndMethod => match &idents[i + 1] {
                 Identifier::Type(returnname) => {
@@ -215,7 +266,7 @@ fn gen_method<'a>(
     }
     skip += i - index;
 
-    (
+    Ok((
         skip,
         Function::new(
             methodname,
@@ -225,21 +276,35 @@ fn gen_method<'a>(
             is_abstract,
             is_static,
         ),
-    )
+    ))
 }
 
-fn write_class<'a>(class: &Class<'a>, location: &str) {
+fn write_class<'a>(class: &Class<'a>, location: &str) -> Result<(), std::io::Error> {
     let pathname = format!("{}{}.java", location, class.name);
     let path = Path::new(&pathname);
     let display = path.display();
     let mut file = match File::create(&path) {
-        Err(why) => panic!("couldn't create {}: {}", display, why),
+        Err(e) => return Err(e),
         Ok(file) => file,
     };
 
-    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
     match file.write_all(class.to_java().as_bytes()) {
-        Err(why) => panic!("couldn't write to {}: {}", display, why),
-        Ok(_) => info!("successfully wrote to {}", display),
+        Err(e) => return Err(e),
+        Ok(_) => {
+            info!("successfully wrote to {}", display);
+            Ok(())
+        }
+    }
+}
+
+enum GeneratorError {
+    UnexpectedIdentifier(String),
+}
+
+impl std::fmt::Display for GeneratorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UnexpectedIdentifier(str) => write!(f, "{}", str),
+        }
     }
 }
