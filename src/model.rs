@@ -125,6 +125,24 @@ impl<'a> Class<'a> {
             str.push_str("\n");
         }
 
+        str.push_str("\n");
+
+        // inherited methods
+        match &self.inherits {
+            None => (),
+            Some(class) => {
+                for af in class.methods.iter() {
+                    if af.is_abstract {
+                        let mut afp = af.clone();
+                        afp.is_abstract = false;
+                        str.push_str("    ");
+                        str.push_str(&afp.to_java());
+                        str.push_str("\n");
+                    }
+                }
+            }
+        }
+
         str.push('}');
         str.push('\n');
 
