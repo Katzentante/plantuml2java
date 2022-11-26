@@ -56,12 +56,6 @@ pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Identifier>
 
 // TODO remove pub
 fn parse_line(line: &String) -> Vec<Identifier> {
-    // ignore comments
-    match line.chars().nth(1) {
-        Some('\'') => return Vec::new(),
-        _ => (),
-    };
-    // println!("{:?}", line);
     match line.as_str() {
         "@startuml " => return vec![Identifier::Startuml],
         "@enduml " => return vec![Identifier::Enduml],
@@ -75,6 +69,7 @@ fn parse_line(line: &String) -> Vec<Identifier> {
     let chars = line.chars();
     for char in chars {
         match char {
+            '\'' => return Vec::new(),
             ' ' => match ident.as_str() {
                 "class" => out.push(Identifier::Class),
                 "interface" => out.push(Identifier::Interface),
