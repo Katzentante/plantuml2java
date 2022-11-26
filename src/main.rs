@@ -7,8 +7,8 @@ mod model;
 
 // TODO
 // impl interfaces / enums -> evt. trait object
-// auto inflict abstract methods / interface methods
-// fix lexer
+// auto inflict interface methods
+// fix lexer -> fix comments
 // finish file checks aka concat files for env::current_dir()
 
 /// Convert .puml files to java classes / interfaces not jet implemented

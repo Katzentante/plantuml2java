@@ -57,7 +57,7 @@ pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Identifier>
 // TODO remove pub
 fn parse_line(line: &String) -> Vec<Identifier> {
     // ignore comments
-    match line.chars().nth(0) {
+    match line.chars().nth(1) {
         Some('\'') => return Vec::new(),
         _ => (),
     };
@@ -109,7 +109,10 @@ fn parse_line(line: &String) -> Vec<Identifier> {
             }
             ':' => {
                 if ident.trim().len() > 0 {
-                    // out.pop();
+                    match out.last() {
+                        Some(Identifier::Name(_)) => {out.pop();},
+                        _ => (),
+                    }
                     out.push(Identifier::Variable(ident.clone()))
                 }
             }

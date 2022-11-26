@@ -2,7 +2,7 @@ use crate::{
     lexer::{self, Identifier},
     model::{Attribute, Class, Function, Type, View},
 };
-use log::{error, info};
+use log::{error, info, debug};
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
@@ -49,7 +49,7 @@ pub fn generate_files(inputfile: &str, outputlocation: &str) -> Result<(), std::
 // TODO:
 // wait for start/enduml
 fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, GeneratorError> {
-    info!("{:?}", idents);
+    debug!("Converting identifiers: {:?}", idents);
     let mut classes = Vec::new();
     let mut is_abstract = false;
     let mut i = 0;
@@ -97,7 +97,8 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                         return Err(GeneratorError::UnexpectedIdentifier(s));
                     }
                 };
-                info!("{}<|--{}", mastername, childname);
+
+                debug!("{}<|--{}", mastername, childname);
                 let master = match classes.iter().find(|c| c.name == mastername) {
                     Some(c) => c.clone(),
                     None => {
@@ -130,22 +131,8 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                         return Err(GeneratorError::UnexpectedIdentifier(s));
                     }
                 };
-                /* let mut childname = "";
-                for j in (0..i).rev() {
-                    match &idents[j] {
-                        Identifier::Name(name) => {
-                            childname = name;
-                            break;
-                        }
-                        // _ => {
-                        //     return Err(GeneratorError::UnexpectedIdentifier(
-                        //         "Expected Name to inherit {mastername}".to_string(),
-                        //     ))
-                        // }
-                        _ => continue,
-                    };
-                } */
-                info!("{}<|--{}", mastername, childname);
+
+                debug!("{}<|--{}", mastername, childname);
                 let master = match classes.iter().find(|c| c.name == mastername) {
                     Some(c) => c.clone(),
                     None => {
