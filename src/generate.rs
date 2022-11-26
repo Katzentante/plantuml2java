@@ -11,20 +11,20 @@ pub fn generate_files(inputfile: &str, outputlocation: &str) -> Result<(), std::
     // check inputfile and outputlocation
     let inputfile = Path::new(inputfile);
     let outputlocation = Path::new(outputlocation);
-    if !outputlocation.is_dir() {
-        error!("Given outputlocation is not an directory");
-        return Ok(());
-    }
-    if outputlocation.is_relative() {
-    }
-    if !inputfile.is_file() {
-        error!("Given input is not a file");
-        return Ok(());
-    }
-    match inputfile.extension() {
-        None => (),
-        _ => (),
-    }
+    // if !outputlocation.is_dir() {
+    //     error!("Given outputlocation is not an directory");
+    //     return Ok(());
+    // }
+    // if outputlocation.is_relative() {
+    // }
+    // if !inputfile.is_file() {
+    //     error!("Given input is not a file");
+    //     return Ok(());
+    // }
+    // match inputfile.extension() {
+    //     None => (),
+    //     _ => (),
+    // }
     match fs::create_dir_all(outputlocation) {
         Ok(_) => (),
         Err(e) => panic!("Error while creating folder {} : {}", outputlocation.to_str().unwrap(), e),
@@ -90,21 +90,13 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                         ))
                     }
                 };
-                let mut childname = "";
-                for j in i..idents.len() {
-                    match &idents[j] {
-                        Identifier::Name(name) => {
-                            childname = name;
-                            break;
-                        }
-                        // _ => {
-                        //     return Err(GeneratorError::UnexpectedIdentifier(
-                        //         "Expected Name to inherit {mastername}".to_string(),
-                        //     ))
-                        // }
-                        _ => continue, 
-                    };
-                }
+                let childname = match &idents[i + 1] {
+                    Identifier::Name(name) => name,
+                    _ => {
+                        let s = format!("Expected name to inherit {}", mastername);
+                        return Err(GeneratorError::UnexpectedIdentifier(s));
+                    }
+                };
                 info!("{}<|--{}", mastername, childname);
                 let master = match classes.iter().find(|c| c.name == mastername) {
                     Some(c) => c.clone(),
@@ -131,7 +123,14 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                         ))
                     }
                 };
-                let mut childname = "";
+                let childname = match &idents[i - 1] {
+                    Identifier::Name(name) => name,
+                    _ => {
+                        let s = format!("Expected name to inherit {}", mastername);
+                        return Err(GeneratorError::UnexpectedIdentifier(s));
+                    }
+                };
+                /* let mut childname = "";
                 for j in (0..i).rev() {
                     match &idents[j] {
                         Identifier::Name(name) => {
@@ -145,7 +144,7 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                         // }
                         _ => continue,
                     };
-                }
+                } */
                 info!("{}<|--{}", mastername, childname);
                 let master = match classes.iter().find(|c| c.name == mastername) {
                     Some(c) => c.clone(),
