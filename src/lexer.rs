@@ -70,6 +70,7 @@ fn parse_line(line: &String) -> Vec<Identifier> {
 
     let mut out = Vec::new();
     let mut second_object_started = false;
+    let mut currently_inheriting = false;
     let mut ident = String::new();
     let chars = line.chars();
     for char in chars {
@@ -79,17 +80,20 @@ fn parse_line(line: &String) -> Vec<Identifier> {
                 "interface" => out.push(Identifier::Interface),
                 "abstract" => out.push(Identifier::Abstract),
                 _ => {
+                    match out.last() {
+                        Some(Identifier::InheritesLeft) => currently_inheriting = false,
+                        _ => (),
+                    }
                     if ident.trim().len() > 0 {
                         match out.last() {
                             Some(Identifier::Variable(_) | Identifier::EndMethod) => {
                                 out.push(Identifier::Type(ident.clone()))
                             }
-                            // _ => match out.last() {
                             Some(Identifier::Class) | Some(Identifier::Interface) => continue,
                             _ => {
                                 out.push(Identifier::Name(ident.clone()));
                                 continue;
-                            } // },
+                            }
                         }
                     } else {
                         continue;
@@ -98,7 +102,11 @@ fn parse_line(line: &String) -> Vec<Identifier> {
             },
             '+' => out.push(Identifier::Public),
             '#' => out.push(Identifier::Protected),
-            '-' => out.push(Identifier::Private),
+            '-' => {
+                if !currently_inheriting {
+                    out.push(Identifier::Private);
+                }
+            }
             ':' => {
                 if ident.trim().len() > 0 {
                     // out.pop();
@@ -144,13 +152,18 @@ fn parse_line(line: &String) -> Vec<Identifier> {
             '>' => {
                 loop {
                     match out.last() {
-                        Some(Identifier::Private) => {out.pop();},
+                        Some(Identifier::Private) => {
+                            out.pop();
+                        }
                         _ => break,
                     }
                 }
                 out.push(Identifier::InheritesRight);
             }
-            '<' => out.push(Identifier::InheritesLeft),
+            '<' => {
+                out.push(Identifier::InheritesLeft);
+                currently_inheriting = true;
+            }
             _ => {
                 ident.push(char.clone());
                 continue;
