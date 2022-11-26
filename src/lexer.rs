@@ -84,13 +84,12 @@ fn parse_line(line: &String) -> Vec<Identifier> {
                             Some(Identifier::Variable(_) | Identifier::EndMethod) => {
                                 out.push(Identifier::Type(ident.clone()))
                             }
-                            _ => match out.last() {
-                                Some(Identifier::Class) | Some(Identifier::Interface) => continue,
-                                _ => {
-                                    out.push(Identifier::Name(ident.clone()));
-                                    continue;
-                                }
-                            },
+                            // _ => match out.last() {
+                            Some(Identifier::Class) | Some(Identifier::Interface) => continue,
+                            _ => {
+                                out.push(Identifier::Name(ident.clone()));
+                                continue;
+                            } // },
                         }
                     } else {
                         continue;

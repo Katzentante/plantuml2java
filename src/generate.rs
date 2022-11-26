@@ -8,11 +8,28 @@ use std::io::prelude::*;
 use std::path::Path;
 
 pub fn generate_files(inputfile: &str, outputlocation: &str) -> Result<(), std::io::Error> {
+    // check inputfile and outputlocation
+    let inputfile = Path::new(inputfile);
+    let outputlocation = Path::new(outputlocation);
+    if !outputlocation.is_dir() {
+        error!("Given outputlocation is not an directory");
+        return Ok(());
+    }
+    if outputlocation.is_relative() {
+    }
+    if !inputfile.is_file() {
+        error!("Given input is not a file");
+        return Ok(());
+    }
+    match inputfile.extension() {
+        None => (),
+        _ => (),
+    }
     match fs::create_dir_all(outputlocation) {
         Ok(_) => (),
-        Err(e) => panic!("Error while creating folder {} : {}", outputlocation, e),
+        Err(e) => panic!("Error while creating folder {} : {}", outputlocation.to_str().unwrap(), e),
     }
-    let idents = match lexer::get_identifiers(inputfile) {
+    let idents = match lexer::get_identifiers(inputfile.to_str().unwrap()) {
         Ok(idents) => idents,
         Err(e) => panic!("Error during creation of idnets: {}", e),
     };
@@ -24,7 +41,7 @@ pub fn generate_files(inputfile: &str, outputlocation: &str) -> Result<(), std::
         },
     };
     for class in classes.iter() {
-        write_class(class, outputlocation)?
+        write_class(class, outputlocation.to_str().unwrap())?
     }
     Ok(())
 }

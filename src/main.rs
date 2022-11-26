@@ -1,31 +1,36 @@
 use clap::Parser;
 use log::error;
 
+mod generate;
 mod lexer;
 mod model;
-mod generate;
 
-// TODO 
+// TODO
+// impl interfaces / enums -> evt. trait object
+// auto inflict abstract methods / interface methods
+// fix lexer
+// finish file checks aka concat files for env::current_dir()
 
-/// Simple program to greet a person
+/// Convert .puml files to java classes / interfaces not jet implemented
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    /// The input file (.puml)
     #[arg(short, long)]
     input: String,
+
+    /// The output folder - is created if non existend
     #[arg(short, long)]
-    output: String
+    output: String,
 }
 
-
 fn main() {
-   let args = Args::parse();
+    let args = Args::parse();
     env_logger::init();
     match generate::generate_files(&args.input, &args.output) {
         Ok(_) => (),
         Err(e) => {
             error!("{}", e);
-        },
+        }
     }
 }
-
