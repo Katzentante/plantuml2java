@@ -36,7 +36,7 @@ pub enum Identifier {
 pub fn get_identifiers<'a>(filename: &'a str) -> std::io::Result<Vec<Identifier>> {
     let path = Path::new(filename);
     let file = File::open(path)?;
-    info!("Opened file {} to parse", filename);
+    info!("Opened {} to parse from", filename);
     let mut out = Vec::new();
     let lines: Vec<String> = io::BufReader::new(file)
         .lines()
@@ -101,7 +101,7 @@ fn parse_line(line: &String) -> Vec<Identifier> {
             '-' => out.push(Identifier::Private),
             ':' => {
                 if ident.trim().len() > 0 {
-                    out.pop();
+                    // out.pop();
                     out.push(Identifier::Variable(ident.clone()))
                 }
             }
@@ -120,7 +120,7 @@ fn parse_line(line: &String) -> Vec<Identifier> {
             }
             '(' => {
                 out.push(Identifier::Name(ident.clone()));
-                out.push(Identifier::StartMethod)
+                out.push(Identifier::StartMethod);
             }
             '}' => {
                 if second_object_started {
@@ -141,7 +141,15 @@ fn parse_line(line: &String) -> Vec<Identifier> {
                 out.push(Identifier::EndMethod)
             }
             ',' => out.push(Identifier::Type(ident.clone())),
-            '>' => out.push(Identifier::InheritesRight),
+            '>' => {
+                loop {
+                    match out.last() {
+                        Some(Identifier::Private) => {out.pop();},
+                        _ => break,
+                    }
+                }
+                out.push(Identifier::InheritesRight);
+            }
             '<' => out.push(Identifier::InheritesLeft),
             _ => {
                 ident.push(char.clone());
