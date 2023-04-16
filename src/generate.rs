@@ -1,3 +1,9 @@
+// Copyright (c) 2023, Oskar Ohlenmacher
+// All rights reserved
+//
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree. 
+
 use crate::{
     lexer::{self, Identifier},
     model::{Attribute, Class, Function, Type, View},
