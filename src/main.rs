@@ -33,10 +33,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
     env_logger::init();
-    match generate::generate_files(&args.input, &args.output) {
-        Ok(_) => (),
-        Err(e) => {
-            error!("{}", e);
-        }
+    if let Err(e) = generate::generate_files(&args.input, &args.output) {
+        error!("{}", e);
     }
 }
