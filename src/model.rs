@@ -92,22 +92,19 @@ impl<'a> Class<'a> {
         str.pop();
         str.push('\n');
         // super func if inherits
-        match &self.inherits {
-            Some(class) => {
-                str.push_str("        super(");
-                for attr in class.attributes.iter() {
-                    str.push_str(&attr.name);
-                    str.push(',');
-                    str.push(' ');
-                }
-                if class.attributes.len() > 0 {
-                    str.pop();
-                    str.pop();
-                }
-                str.push(')');
-                str.push(';');
+        if let Some(class) = &self.inherits {
+            str.push_str("        super(");
+            for attr in class.attributes.iter() {
+                str.push_str(&attr.name);
+                str.push(',');
+                str.push(' ');
             }
-            None => (),
+            if class.attributes.len() > 0 {
+                str.pop();
+                str.pop();
+            }
+            str.push(')');
+            str.push(';');
         }
         str.push('\n');
 
@@ -131,9 +128,7 @@ impl<'a> Class<'a> {
         str.push_str("\n");
 
         // inherited methods
-        match &self.inherits {
-            None => (),
-            Some(class) => {
+        if let Some(class) = &self.inherits {
                 for af in class.methods.iter() {
                     if af.is_abstract {
                         let mut afp = af.clone();
@@ -141,7 +136,6 @@ impl<'a> Class<'a> {
                         str.push_str("    ");
                         str.push_str(&afp.to_java());
                         str.push_str("\n");
-                    }
                 }
             }
         }
