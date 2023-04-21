@@ -129,13 +129,13 @@ impl<'a> Class<'a> {
 
         // inherited methods
         if let Some(class) = &self.inherits {
-                for af in class.methods.iter() {
-                    if af.is_abstract {
-                        let mut afp = af.clone();
-                        afp.is_abstract = false;
-                        str.push_str("    ");
-                        str.push_str(&afp.to_java());
-                        str.push_str("\n");
+            for af in class.methods.iter() {
+                if af.is_abstract {
+                    let mut afp = af.clone();
+                    afp.is_abstract = false;
+                    str.push_str("    ");
+                    str.push_str(&afp.to_java());
+                    str.push_str("\n");
                 }
             }
         }
@@ -148,13 +148,10 @@ impl<'a> Class<'a> {
 
     pub fn get_constructor_func(&self) -> Function<'a> {
         let mut attributes = self.attributes.clone();
-        match &self.inherits {
-            Some(c) => {
-                for attr in c.attributes.iter() {
-                    attributes.push(*attr);
-                }
+        if let Some(class) = &self.inherits {
+            for attr in class.attributes.iter() {
+                attributes.push(*attr);
             }
-            None => (),
         }
         Function::new(
             self.name,
