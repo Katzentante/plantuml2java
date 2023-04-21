@@ -31,8 +31,8 @@ struct Args {
 }
 
 fn main() {
-    let args = Args::parse();
     env_logger::init();
+    let args = Args::parse();
     if let Err(e) = generate::generate_files(&args.input, &args.output) {
         error!("{}", e);
     }

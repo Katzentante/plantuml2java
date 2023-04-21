@@ -2,18 +2,23 @@
 // All rights reserved
 //
 // This source code is licensed under the BSD-style license found in the
-// LICENSE file in the root directory of this source tree. 
+// LICENSE file in the root directory of this source tree.
 
 use crate::{
     lexer::{self, Identifier},
     model::{Attribute, Class, Function, Type, View},
 };
-use log::{error, info, debug};
-use std::fs::{self, File};
-use std::io::prelude::*;
+use log::{debug, error, info};
+use std::{io::prelude::*, error::Error};
 use std::path::Path;
+use std::{
+    fs::{self, File},
+};
 
-pub fn generate_files(inputfile: &str, outputlocation: &str) -> Result<(), std::io::Error> {
+pub fn generate_files(
+    inputfile: &str,
+    outputlocation: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     // check inputfile and outputlocation
     let inputfile = Path::new(inputfile);
     let outputlocation = Path::new(outputlocation);
@@ -31,21 +36,17 @@ pub fn generate_files(inputfile: &str, outputlocation: &str) -> Result<(), std::
     //     None => (),
     //     _ => (),
     // }
-    match fs::create_dir_all(outputlocation) {
-        Ok(_) => (),
-        Err(e) => panic!("Error while creating folder {} : {}", outputlocation.to_str().unwrap(), e),
-    }
-    let idents = match lexer::get_identifiers(inputfile.to_str().unwrap()) {
-        Ok(idents) => idents,
-        Err(e) => panic!("Error during creation of idnets: {}", e),
-    };
-    let classes = match get_classes(&idents) {
-        Ok(it) => it,
-        Err(err) => {
+    fs::create_dir_all(outputlocation)?;
+    let idents = lexer::get_identifiers(
+        inputfile
+            .to_str()
+            .ok_or(CustomError::Utf8ParseError)?,
+    )?;
+    let classes = get_classes(&idents).or_else(|err| {
             error!("{}", err);
-            return Ok(());
-        },
-    };
+            return Err(Box::new(err));
+        }).unwrap();
+
     for class in classes.iter() {
         write_class(class, outputlocation.to_str().unwrap())?
     }
@@ -306,6 +307,7 @@ fn write_class<'a>(class: &Class<'a>, location: &str) -> Result<(), std::io::Err
     }
 }
 
+#[derive(Debug)]
 enum GeneratorError {
     UnexpectedIdentifier(String),
 }
@@ -317,3 +319,18 @@ impl std::fmt::Display for GeneratorError {
         }
     }
 }
+
+
+#[derive(Debug)] enum CustomError {
+    Utf8ParseError
+}
+
+impl std::fmt::Display for CustomError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Utf8ParseError => write!(f, "There is a utf8 error"),
+        }
+    }
+}
+
+impl Error for CustomError {}
