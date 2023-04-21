@@ -11,9 +11,7 @@ use crate::{
 use log::{debug, error, info};
 use std::{io::prelude::*, error::Error};
 use std::path::Path;
-use std::{
-    fs::{self, File},
-};
+use std::fs::{self, File};
 
 pub fn generate_files(
     inputfile: &str,
@@ -22,20 +20,17 @@ pub fn generate_files(
     // check inputfile and outputlocation
     let inputfile = Path::new(inputfile);
     let outputlocation = Path::new(outputlocation);
-    // if !outputlocation.is_dir() {
-    //     error!("Given outputlocation is not an directory");
-    //     return Ok(());
-    // }
-    // if outputlocation.is_relative() {
-    // }
-    // if !inputfile.is_file() {
-    //     error!("Given input is not a file");
-    //     return Ok(());
-    // }
-    // match inputfile.extension() {
-    //     None => (),
-    //     _ => (),
-    // }
+
+    if !outputlocation.is_dir() {
+        error!("Given output is not a directory");
+        return Err(Box::new(CustomError::OutputNotDirectory));
+    }
+
+    if !inputfile.is_file() {
+        error!("Given input is not a file");
+        return Err(Box::new(CustomError::InputNotFile));
+    }
+
     fs::create_dir_all(outputlocation)?;
     let idents = lexer::get_identifiers(
         inputfile
@@ -50,6 +45,7 @@ pub fn generate_files(
     for class in classes.iter() {
         write_class(class, outputlocation.to_str().unwrap())?
     }
+
     Ok(())
 }
 
@@ -322,13 +318,17 @@ impl std::fmt::Display for GeneratorError {
 
 
 #[derive(Debug)] enum CustomError {
-    Utf8ParseError
+    Utf8ParseError,
+    OutputNotDirectory,
+    InputNotFile,
+    // InputWrongExtension
 }
 
 impl std::fmt::Display for CustomError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Utf8ParseError => write!(f, "There is a utf8 error"),
+            _ => write!(f, "Some Error")
         }
     }
 }
