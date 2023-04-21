@@ -2,7 +2,7 @@
 // All rights reserved
 //
 // This source code is licensed under the BSD-style license found in the
-// LICENSE file in the root directory of this source tree. 
+// LICENSE file in the root directory of this source tree.
 
 #[derive(Debug, Clone)]
 pub struct Class<'a> {
@@ -69,13 +69,10 @@ impl<'a> Class<'a> {
         str.push_str("class ");
         str.push_str(self.name);
         str.push(' ');
-        match &self.inherits {
-            Some(c) => {
-                str.push_str("extends ");
-                str.push_str(c.name);
-                str.push(' ');
-            }
-            None => (),
+        if let Some(s) = &self.inherits {
+            str.push_str("extends ");
+            str.push_str(s.name);
+            str.push(' ');
         }
         str.push('{');
         str.push_str("\n");
