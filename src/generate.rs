@@ -9,9 +9,9 @@ use crate::{
     model::{Attribute, Class, Function, Type, View},
 };
 use log::{debug, error, info};
-use std::{io::prelude::*, error::Error};
-use std::path::Path;
 use std::fs::{self, File};
+use std::path::Path;
+use std::{error::Error, io::prelude::*};
 
 pub fn generate_files(
     inputfile: &str,
@@ -21,26 +21,32 @@ pub fn generate_files(
     let inputfile = Path::new(inputfile);
     let outputlocation = Path::new(outputlocation);
 
-    if !outputlocation.is_dir() {
-        error!("Given output is not a directory");
-        return Err(Box::new(CustomError::OutputNotDirectory));
+    if !outputlocation.exists() {
+        if outputlocation.is_dir() {
+            fs::create_dir_all(outputlocation)?;
+        } else {
+            error!("Given output is not a directory");
+            return Err(Box::new(CustomError::OutputNotDirectory));
+        }
     }
 
-    if !inputfile.is_file() {
-        error!("Given input is not a file");
+    if !inputfile.exists() {
+        error!("Input file does not exist");
         return Err(Box::new(CustomError::InputNotFile));
+    } else {
+        if !inputfile.is_file() {
+            error!("Given input is not a file");
+            return Err(Box::new(CustomError::InputNotFile));
+        }
     }
 
-    fs::create_dir_all(outputlocation)?;
-    let idents = lexer::get_identifiers(
-        inputfile
-            .to_str()
-            .ok_or(CustomError::Utf8ParseError)?,
-    )?;
-    let classes = get_classes(&idents).or_else(|err| {
+    let idents = lexer::get_identifiers(inputfile.to_str().ok_or(CustomError::Utf8ParseError)?)?;
+    let classes = get_classes(&idents)
+        .or_else(|err| {
             error!("{}", err);
             return Err(Box::new(err));
-        }).unwrap();
+        })
+        .unwrap();
 
     for class in classes.iter() {
         write_class(class, outputlocation.to_str().unwrap())?
@@ -316,8 +322,8 @@ impl std::fmt::Display for GeneratorError {
     }
 }
 
-
-#[derive(Debug)] enum CustomError {
+#[derive(Debug)]
+enum CustomError {
     Utf8ParseError,
     OutputNotDirectory,
     InputNotFile,
@@ -328,7 +334,7 @@ impl std::fmt::Display for CustomError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Utf8ParseError => write!(f, "There is a utf8 error"),
-            _ => write!(f, "Some Error")
+            _ => write!(f, "Some Error"),
         }
     }
 }
