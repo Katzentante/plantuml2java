@@ -8,7 +8,7 @@ use clap::Parser;
 use log::error;
 
 mod generate;
-mod lexer;
+mod tokenizer;
 mod model;
 
 // TODO
