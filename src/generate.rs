@@ -32,7 +32,7 @@ pub fn generate_files(
 
     if !inputfile.exists() {
         error!("Input file does not exist");
-        return Err(Box::new(CustomError::InputNotFile));
+        return Err(Box::new(CustomError::InputNotFound));
     } else {
         if !inputfile.is_file() {
             error!("Given input is not a file");
@@ -318,6 +318,7 @@ enum CustomError {
     Utf8ParseError,
     OutputNotDirectory,
     InputNotFile,
+    InputNotFound,
     // InputWrongExtension
 }
 
@@ -325,7 +326,10 @@ impl std::fmt::Display for CustomError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Utf8ParseError => write!(f, "There is a utf8 error"),
-            _ => write!(f, "Some Error"),
+            Self::InputNotFile => write!(f, "Input file is a directory"),
+            Self::InputNotFound => write!(f, "Input file not present"),
+            Self::OutputNotDirectory => write!(f, "Output directory is a file"),
+            // _ => write!(f, "Some Error"),
         }
     }
 }
