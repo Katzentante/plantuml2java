@@ -49,7 +49,7 @@ pub fn generate_files(
         .unwrap();
 
     for class in classes.iter() {
-        write_class(class, outputlocation.to_str().unwrap())?
+        write_class(class, &outputlocation)?
     }
 
     Ok(())
@@ -291,22 +291,13 @@ fn gen_method<'a>(
     ))
 }
 
-fn write_class<'a>(class: &Class<'a>, location: &str) -> Result<(), std::io::Error> {
-    let pathname = format!("{}{}.java", location, class.name);
-    let path = Path::new(&pathname);
-    let display = path.display();
-    let mut file = match File::create(&path) {
-        Err(e) => return Err(e),
-        Ok(file) => file,
-    };
-
-    match file.write_all(class.to_java().as_bytes()) {
-        Err(e) => return Err(e),
-        Ok(_) => {
-            info!("successfully wrote to {}", display);
-            Ok(())
-        }
-    }
+fn write_class<'a>(class: &Class<'a>, location: &Path) -> Result<(), std::io::Error> {
+    let classpath = Path::new(class.name).with_extension("java");
+    let path = Path::join(location, classpath);
+    let mut file = File::create(&path)?;
+    file.write_all(class.to_java().as_bytes())?;
+    info!("successfully wrote to {}", path.display());
+    Ok(())
 }
 
 #[derive(Debug)]
