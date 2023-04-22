@@ -5,7 +5,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{
-    lexer::{self, Identifier},
+    tokenizer::{self, Token},
     model::{Attribute, Class, Function, Type, View},
 };
 use log::{debug, error, info};
@@ -40,7 +40,7 @@ pub fn generate_files(
         }
     }
 
-    let idents = lexer::get_identifiers(inputfile.to_str().ok_or(CustomError::Utf8ParseError)?)?;
+    let idents = tokenizer::get_identifiers(inputfile)?;
     let classes = get_classes(&idents)
         .or_else(|err| {
             error!("{}", err);
@@ -57,7 +57,7 @@ pub fn generate_files(
 
 // TODO:
 // wait for start/enduml
-fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, GeneratorError> {
+fn get_classes<'a>(idents: &'a [Token]) -> Result<Vec<Class<'a>>, GeneratorError> {
     debug!("Converting identifiers: {:?}", idents);
     let mut classes = Vec::new();
     let mut is_abstract = false;
@@ -66,11 +66,11 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
 
     while i < idents.len() {
         match &idents[i] {
-            Identifier::Abstract => is_abstract = true,
-            Identifier::Class => match &idents[i + 1] {
-                Identifier::Name(name) => {
+            Token::Abstract => is_abstract = true,
+            Token::Class => match &idents[i + 1] {
+                Token::Name(name) => {
                     match &idents[i + 2] {
-                        Identifier::StartObject => {
+                        Token::StartObject => {
                             let (skip, mut class) = gen_class(idents, i + 3, name)?;
                             class = class.with_abstract(is_abstract);
                             // let mut class = Class::build(name, View::Public, false);
@@ -90,9 +90,9 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                     return Err(GeneratorError::UnexpectedIdentifier(s));
                 }
             },
-            Identifier::InheritesLeft => {
+            Token::InheritesLeft => {
                 let mastername = match &idents[i - 1] {
-                    Identifier::Name(name) => name,
+                    Token::Name(name) => name,
                     _ => {
                         return Err(GeneratorError::UnexpectedIdentifier(
                             "Expected Name to be iherited from".to_string(),
@@ -100,7 +100,7 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                     }
                 };
                 let childname = match &idents[i + 1] {
-                    Identifier::Name(name) => name,
+                    Token::Name(name) => name,
                     _ => {
                         let s = format!("Expected name to inherit {}", mastername);
                         return Err(GeneratorError::UnexpectedIdentifier(s));
@@ -124,9 +124,9 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                 };
                 child.set_inherits(master);
             }
-            Identifier::InheritesRight => {
+            Token::InheritesRight => {
                 let mastername = match &idents[i + 1] {
-                    Identifier::Name(name) => name,
+                    Token::Name(name) => name,
                     _ => {
                         return Err(GeneratorError::UnexpectedIdentifier(
                             "Expected Name to be iherited from".to_string(),
@@ -134,7 +134,7 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                     }
                 };
                 let childname = match &idents[i - 1] {
-                    Identifier::Name(name) => name,
+                    Token::Name(name) => name,
                     _ => {
                         let s = format!("Expected name to inherit {}", mastername);
                         return Err(GeneratorError::UnexpectedIdentifier(s));
@@ -167,7 +167,7 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
 }
 
 fn gen_class<'a>(
-    idents: &'a [Identifier],
+    idents: &'a [Token],
     index: usize,
     classname: &'a str,
 ) -> Result<(usize, Class<'a>), GeneratorError> {
@@ -180,17 +180,17 @@ fn gen_class<'a>(
 
     while i < idents.len() {
         match &idents[i] {
-            Identifier::Public => view = View::Public,
-            Identifier::Private => view = View::Private,
-            Identifier::Protected => view = View::Protected,
-            Identifier::Abstract => {
+            Token::Public => view = View::Public,
+            Token::Private => view = View::Private,
+            Token::Protected => view = View::Protected,
+            Token::Abstract => {
                 is_abstract = true;
                 class = class.with_abstract(true)
             }
-            Identifier::Static => is_static = true,
-            Identifier::Variable(varname) => {
+            Token::Static => is_static = true,
+            Token::Variable(varname) => {
                 match &idents[i + 1] {
-                    Identifier::Type(vartype) => {
+                    Token::Type(vartype) => {
                         class = class.with_attribute(Attribute::new(
                             view,
                             varname,
@@ -212,8 +212,8 @@ fn gen_class<'a>(
                 i += 1;
                 skip += 1;
             }
-            Identifier::StartMethod => match &idents[i - 1] {
-                Identifier::Name(methodname) => {
+            Token::StartMethod => match &idents[i - 1] {
+                Token::Name(methodname) => {
                     let (mskip, method) =
                         gen_method(idents, i + 1, methodname, view, is_abstract, is_static)?;
                     i += mskip;
@@ -228,7 +228,7 @@ fn gen_class<'a>(
                     return Err(GeneratorError::UnexpectedIdentifier(s));
                 }
             },
-            Identifier::EndObject => break,
+            Token::EndObject => break,
             _ => (),
         }
         i += 1;
@@ -238,7 +238,7 @@ fn gen_class<'a>(
 }
 
 fn gen_method<'a>(
-    idents: &'a [Identifier],
+    idents: &'a [Token],
     index: usize,
     methodname: &'a str,
     view: View,
@@ -252,8 +252,8 @@ fn gen_method<'a>(
 
     while i < idents.len() {
         match &idents[i] {
-            Identifier::Variable(varname) => match &idents[i + 1] {
-                Identifier::Type(typename) => {
+            Token::Variable(varname) => match &idents[i + 1] {
+                Token::Type(typename) => {
                     paremeters.push(Attribute::new(view, varname, Type::Other(typename), false))
                 }
                 _ => {
@@ -264,8 +264,8 @@ fn gen_method<'a>(
                     return Err(GeneratorError::UnexpectedIdentifier(s));
                 }
             },
-            Identifier::EndMethod => match &idents[i + 1] {
-                Identifier::Type(returnname) => {
+            Token::EndMethod => match &idents[i + 1] {
+                Token::Type(returnname) => {
                     returntype = Type::Other(returnname);
                     i += 1;
                     break;
