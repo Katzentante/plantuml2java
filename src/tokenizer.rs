@@ -141,6 +141,16 @@ impl Searcher {
                         }
                     }
 
+                    match buf.split_whitespace().nth(0) {
+                        Some("class") => {
+                        }
+                        Some("enum") => {
+                        }
+                        Some("interface") => {
+                        }
+                        _ => (),
+                    }
+
                     continue;
                 }
                 Err(SearchError::SkipLine) => continue,
