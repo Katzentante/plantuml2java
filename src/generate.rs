@@ -5,13 +5,13 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{
-    lexer::{self, Identifier},
+    tokenizer::{self, Token},
     model::{Attribute, Class, Function, Type, View},
 };
 use log::{debug, error, info};
-use std::{io::prelude::*, error::Error};
-use std::path::Path;
 use std::fs::{self, File};
+use std::path::Path;
+use std::{error::Error, io::prelude::*};
 
 pub fn generate_files(
     inputfile: &str,
@@ -21,29 +21,35 @@ pub fn generate_files(
     let inputfile = Path::new(inputfile);
     let outputlocation = Path::new(outputlocation);
 
-    if !outputlocation.is_dir() {
-        error!("Given output is not a directory");
-        return Err(Box::new(CustomError::OutputNotDirectory));
+    if !outputlocation.exists() {
+        if outputlocation.is_dir() {
+            fs::create_dir_all(outputlocation)?;
+        } else {
+            error!("Given output is not a directory");
+            return Err(Box::new(CustomError::OutputNotDirectory));
+        }
     }
 
-    if !inputfile.is_file() {
-        error!("Given input is not a file");
-        return Err(Box::new(CustomError::InputNotFile));
+    if !inputfile.exists() {
+        error!("Input file does not exist");
+        return Err(Box::new(CustomError::InputNotFound));
+    } else {
+        if !inputfile.is_file() {
+            error!("Given input is not a file");
+            return Err(Box::new(CustomError::InputNotFile));
+        }
     }
 
-    fs::create_dir_all(outputlocation)?;
-    let idents = lexer::get_identifiers(
-        inputfile
-            .to_str()
-            .ok_or(CustomError::Utf8ParseError)?,
-    )?;
-    let classes = get_classes(&idents).or_else(|err| {
+    let idents = tokenizer::get_identifiers(inputfile)?;
+    let classes = get_classes(&idents)
+        .or_else(|err| {
             error!("{}", err);
             return Err(Box::new(err));
-        }).unwrap();
+        })
+        .unwrap();
 
     for class in classes.iter() {
-        write_class(class, outputlocation.to_str().unwrap())?
+        write_class(class, &outputlocation)?
     }
 
     Ok(())
@@ -51,7 +57,7 @@ pub fn generate_files(
 
 // TODO:
 // wait for start/enduml
-fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, GeneratorError> {
+fn get_classes<'a>(idents: &'a [Token]) -> Result<Vec<Class<'a>>, GeneratorError> {
     debug!("Converting identifiers: {:?}", idents);
     let mut classes = Vec::new();
     let mut is_abstract = false;
@@ -60,11 +66,11 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
 
     while i < idents.len() {
         match &idents[i] {
-            Identifier::Abstract => is_abstract = true,
-            Identifier::Class => match &idents[i + 1] {
-                Identifier::Name(name) => {
+            Token::Abstract => is_abstract = true,
+            Token::Class => match &idents[i + 1] {
+                Token::Name(name) => {
                     match &idents[i + 2] {
-                        Identifier::StartObject => {
+                        Token::StartObject => {
                             let (skip, mut class) = gen_class(idents, i + 3, name)?;
                             class = class.with_abstract(is_abstract);
                             // let mut class = Class::build(name, View::Public, false);
@@ -84,9 +90,9 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                     return Err(GeneratorError::UnexpectedIdentifier(s));
                 }
             },
-            Identifier::InheritesLeft => {
+            Token::InheritesLeft => {
                 let mastername = match &idents[i - 1] {
-                    Identifier::Name(name) => name,
+                    Token::Name(name) => name,
                     _ => {
                         return Err(GeneratorError::UnexpectedIdentifier(
                             "Expected Name to be iherited from".to_string(),
@@ -94,7 +100,7 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                     }
                 };
                 let childname = match &idents[i + 1] {
-                    Identifier::Name(name) => name,
+                    Token::Name(name) => name,
                     _ => {
                         let s = format!("Expected name to inherit {}", mastername);
                         return Err(GeneratorError::UnexpectedIdentifier(s));
@@ -118,9 +124,9 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                 };
                 child.set_inherits(master);
             }
-            Identifier::InheritesRight => {
+            Token::InheritesRight => {
                 let mastername = match &idents[i + 1] {
-                    Identifier::Name(name) => name,
+                    Token::Name(name) => name,
                     _ => {
                         return Err(GeneratorError::UnexpectedIdentifier(
                             "Expected Name to be iherited from".to_string(),
@@ -128,7 +134,7 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
                     }
                 };
                 let childname = match &idents[i - 1] {
-                    Identifier::Name(name) => name,
+                    Token::Name(name) => name,
                     _ => {
                         let s = format!("Expected name to inherit {}", mastername);
                         return Err(GeneratorError::UnexpectedIdentifier(s));
@@ -161,7 +167,7 @@ fn get_classes<'a>(idents: &'a [Identifier]) -> Result<Vec<Class<'a>>, Generator
 }
 
 fn gen_class<'a>(
-    idents: &'a [Identifier],
+    idents: &'a [Token],
     index: usize,
     classname: &'a str,
 ) -> Result<(usize, Class<'a>), GeneratorError> {
@@ -174,17 +180,17 @@ fn gen_class<'a>(
 
     while i < idents.len() {
         match &idents[i] {
-            Identifier::Public => view = View::Public,
-            Identifier::Private => view = View::Private,
-            Identifier::Protected => view = View::Protected,
-            Identifier::Abstract => {
+            Token::Public => view = View::Public,
+            Token::Private => view = View::Private,
+            Token::Protected => view = View::Protected,
+            Token::Abstract => {
                 is_abstract = true;
                 class = class.with_abstract(true)
             }
-            Identifier::Static => is_static = true,
-            Identifier::Variable(varname) => {
+            Token::Static => is_static = true,
+            Token::Variable(varname) => {
                 match &idents[i + 1] {
-                    Identifier::Type(vartype) => {
+                    Token::Type(vartype) => {
                         class = class.with_attribute(Attribute::new(
                             view,
                             varname,
@@ -206,8 +212,8 @@ fn gen_class<'a>(
                 i += 1;
                 skip += 1;
             }
-            Identifier::StartMethod => match &idents[i - 1] {
-                Identifier::Name(methodname) => {
+            Token::StartMethod => match &idents[i - 1] {
+                Token::Name(methodname) => {
                     let (mskip, method) =
                         gen_method(idents, i + 1, methodname, view, is_abstract, is_static)?;
                     i += mskip;
@@ -222,7 +228,7 @@ fn gen_class<'a>(
                     return Err(GeneratorError::UnexpectedIdentifier(s));
                 }
             },
-            Identifier::EndObject => break,
+            Token::EndObject => break,
             _ => (),
         }
         i += 1;
@@ -232,7 +238,7 @@ fn gen_class<'a>(
 }
 
 fn gen_method<'a>(
-    idents: &'a [Identifier],
+    idents: &'a [Token],
     index: usize,
     methodname: &'a str,
     view: View,
@@ -246,8 +252,8 @@ fn gen_method<'a>(
 
     while i < idents.len() {
         match &idents[i] {
-            Identifier::Variable(varname) => match &idents[i + 1] {
-                Identifier::Type(typename) => {
+            Token::Variable(varname) => match &idents[i + 1] {
+                Token::Type(typename) => {
                     paremeters.push(Attribute::new(view, varname, Type::Other(typename), false))
                 }
                 _ => {
@@ -258,8 +264,8 @@ fn gen_method<'a>(
                     return Err(GeneratorError::UnexpectedIdentifier(s));
                 }
             },
-            Identifier::EndMethod => match &idents[i + 1] {
-                Identifier::Type(returnname) => {
+            Token::EndMethod => match &idents[i + 1] {
+                Token::Type(returnname) => {
                     returntype = Type::Other(returnname);
                     i += 1;
                     break;
@@ -285,22 +291,13 @@ fn gen_method<'a>(
     ))
 }
 
-fn write_class<'a>(class: &Class<'a>, location: &str) -> Result<(), std::io::Error> {
-    let pathname = format!("{}{}.java", location, class.name);
-    let path = Path::new(&pathname);
-    let display = path.display();
-    let mut file = match File::create(&path) {
-        Err(e) => return Err(e),
-        Ok(file) => file,
-    };
-
-    match file.write_all(class.to_java().as_bytes()) {
-        Err(e) => return Err(e),
-        Ok(_) => {
-            info!("successfully wrote to {}", display);
-            Ok(())
-        }
-    }
+fn write_class<'a>(class: &Class<'a>, location: &Path) -> Result<(), std::io::Error> {
+    let classpath = Path::new(class.name).with_extension("java");
+    let path = Path::join(location, classpath);
+    let mut file = File::create(&path)?;
+    file.write_all(class.to_java().as_bytes())?;
+    info!("successfully wrote to {}", path.display());
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -316,11 +313,12 @@ impl std::fmt::Display for GeneratorError {
     }
 }
 
-
-#[derive(Debug)] enum CustomError {
+#[derive(Debug)]
+enum CustomError {
     Utf8ParseError,
     OutputNotDirectory,
     InputNotFile,
+    InputNotFound,
     // InputWrongExtension
 }
 
@@ -328,7 +326,10 @@ impl std::fmt::Display for CustomError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Utf8ParseError => write!(f, "There is a utf8 error"),
-            _ => write!(f, "Some Error")
+            Self::InputNotFile => write!(f, "Input file is a directory"),
+            Self::InputNotFound => write!(f, "Input file not present"),
+            Self::OutputNotDirectory => write!(f, "Output directory is a file"),
+            // _ => write!(f, "Some Error"),
         }
     }
 }

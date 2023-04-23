@@ -1,0 +1,73 @@
+@startuml
+skinparam classAttributeIconSize 0
+' class GameTest{
+' + {static} main(args : String[]) : void
+' }
+class Kampfregel{
++ würfel6 : Würfel
++ würfel10 : Würfel
++ Kampfregel()
++ kampf(k1 : Held, k2 : Monster) : void
+}
+class Waffe{
+- bonus : int
+- material : int
+- magie : int
++ Waffe(bonus : int, material : int, magie : int)
++ bonusBerechnen() : int
+}
+class Monster{
++ angriffswert : int
++ lebenspunkte : int
++ Monster()
++ getLebenspunkte() : int
++ setLebenspunkte(lebenspunkte : int) : void
++ getAngriffswert() : int
+}
+class Game{
+- held : Held
+/* - monsters : ArrayList<Monster> */
+- monsters : Monster
+- kampfregel : Kampfregel
+monsterAmt : int
++ Game(held : Held)
++ {static} test_run() : void
+}
+class Held{
+# name : String
+# stärke : int
+# lebenspunkte : int
+# angriffswert : int
+# waffe : Waffe
++ Held(name : String)
++ Held(name : String, stärke : int, lebenspunkte : int, angriffswert : int)
++ addLebenspunkte(faktor : int) : boolean
++ angreifen(monster : Monster, regel : Kampfregel) : void
++ {abstract} getAngriffswert() : int
+}
+class Zauberer{
+- zauberkraft : int
++ Zauberer(name : String, stärke : int, lebenspunkte : int, angriffswert : int, zauberkraft : int)
++ Zauberer(name : String)
++ getAngriffswert() : int
++ heilen(held : Held) : void
+}
+Zauberer --|> Held
+class Krieger{
+- ausdauer : int
++ Krieger(name : String, stärke : int, lebenspunkte : int, angriffswert : int, ausdauer : int)
++ Krieger(name : String)
++ getAngriffswert() : int
+}
+Krieger --|> Held
+class Würfel{
+- augen : int
++ Würfel(augen : int)
++ würfeln() : int
+}
+' Kampfregel--"+ würfel6" Würfel
+' Kampfregel--"+ würfel10" Würfel
+' Game--"- held" Held
+' Game--"- kampfregel" Kampfregel
+' Held--" # waffe" Waffe
+@enduml
