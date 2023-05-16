@@ -16,6 +16,7 @@
 use log::info;
 use std::{
     error::Error,
+    fmt::Display,
     fs::File,
     io::{self, BufRead, BufReader, ErrorKind, Read},
     path::Path,
@@ -54,7 +55,7 @@ pub fn get_identifiers<'a>(filepath: &Path) -> Result<Vec<Token>, Box<dyn Error>
     info!("Opened {:?} to parse from", filepath);
 
     let mut searcher = Searcher::new(BufReader::new(file));
-    searcher.start_search();
+    searcher.start_search()?;
 
     Ok(searcher.tokens)
     // let mut out = Vec::new();
@@ -66,7 +67,7 @@ pub fn get_identifiers<'a>(filepath: &Path) -> Result<Vec<Token>, Box<dyn Error>
     //         x
     //     })
     //     .collect();
-    // // let s = std::mem::size_of_val(&BufReader::new(file));
+    // let s = std::mem::size_of_val(&BufReader::new(file));
     // // log::error!("{}", s);
     // for line in lines.iter() {
     //     // out.extend(parse_line(&line))
@@ -75,26 +76,30 @@ pub fn get_identifiers<'a>(filepath: &Path) -> Result<Vec<Token>, Box<dyn Error>
     // Ok(out)
 }
 
-struct Searcher {
+struct Searcher<'a> {
     tokens: Vec<Token>,
     file_reader: BufReader<File>,
-    line_number: usize,
-    uml_started: bool,
+
+    line: &'a str,
     buffer: String,
+    line_number: usize,
+
+    uml_started: bool,
 }
 
-impl Searcher {
+impl Searcher<'_> {
     fn new(file_reader: BufReader<File>) -> Self {
         Self {
             tokens: Vec::new(),
             file_reader,
             buffer: String::new(),
+            line: "",
             line_number: 0,
             uml_started: false,
         }
     }
 
-    fn next_line<'a>(&'a mut self) -> Result<&str, SearchError> {
+    fn next_line<'a>(&'a mut self) -> Result<(), SearchError> {
         self.buffer.clear();
         if let Err(e) = self.file_reader.read_line(&mut self.buffer) {
             // TODO if line ended before uml
@@ -110,7 +115,10 @@ impl Searcher {
             } else {
                 log::info!("Skipping line to search for @startuml {}", self.line_number);
                 // return self.next_line();
-                return Err(SearchError::SkipLine);
+                return Err(SearchError::SkipLine {
+                    reason: String::from("Skipping line to search for @startuml"),
+                    line_number: self.line_number,
+                });
             }
         } else {
             if buf.starts_with("@enduml") {
@@ -120,11 +128,15 @@ impl Searcher {
             if buf.starts_with("'") {
                 log::info!("Skipping line {}", self.line_number);
                 // return self.next_line();
-                return Err(SearchError::SkipLine);
+                return Err(SearchError::SkipLine {
+                    reason: String::from("Commented line"),
+                    line_number: self.line_number,
+                });
             }
         }
 
-        Ok(buf)
+        self.line = self.buffer.trim_start();
+        Ok(())
     }
 
     fn search_global(&mut self) -> Result<(), SearchError> {
@@ -132,33 +144,40 @@ impl Searcher {
             // FIXME how to access self in match statement
             let line = self.line_number;
             match self.next_line() {
-                Ok(buf) => {
-                    info!("Chekcing line {}", line +1);
+                Ok(_) => {
+                    info!("Chekcing line {}", line + 1);
 
                     for ignore_string in ["skinparam"].iter() {
-                        if buf.starts_with(ignore_string) {
+                        if self.line.starts_with(ignore_string) {
                             continue;
                         }
                     }
 
-                    match buf.split_whitespace().nth(0) {
+                    match self.line.split_whitespace().nth(0) {
                         Some("class") => {
+                            self.search_class()?;
                         }
-                        Some("enum") => {
-                        }
-                        Some("interface") => {
-                        }
+                        Some("enum") => {}
+                        Some("interface") => {}
                         _ => (),
                     }
 
                     continue;
                 }
-                Err(SearchError::SkipLine) => continue,
-                Err(SearchError::UmlEnded) => break,
-                Err(e) => return Err(e),
-                // _ => (),
+                Err(e) => match e {
+                    SearchError::SkipLine { .. } => continue,
+                    SearchError::UmlEnded => break,
+                    e => return Err(e),
+                }, 
             }
         }
+        Ok(())
+    }
+
+    fn search_class(&mut self) -> Result<(), SearchError> {
+        // search for name than { "class Name {" or "class Name{"
+        println!("{}", self.line);
+
         Ok(())
     }
 
@@ -167,10 +186,47 @@ impl Searcher {
     }
 }
 
+#[derive(Debug)]
 enum SearchError {
     IOError(std::io::Error),
-    SkipLine,
+    SkipLine { reason: String, line_number: usize },
     UmlEnded,
+}
+
+impl Display for SearchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UmlEnded => write!(f, "The UML part of the file ended"),
+            Self::SkipLine {
+                reason,
+                line_number,
+            } => write!(f, "Line {} skipped, reason: \"{}\"", line_number, reason),
+            Self::IOError(e) => write!(f, "IOError: \"{}\"", e),
+        }
+    }
+}
+
+impl std::error::Error for SearchError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
+
+    // fn type_id(&self, _: private::Internal) -> std::any::TypeId
+    // where
+    //     Self: 'static,
+    // {
+    //     std::any::TypeId::of::<Self>()
+    // }
+
+    fn description(&self) -> &str {
+        "description() is deprecated; use Display"
+    }
+
+    fn cause(&self) -> Option<&dyn Error> {
+        self.source()
+    }
+
+    // fn provide<'a>(&'a self, demand: &mut std::any::Demand<'a>) {}
 }
 
 // TODO remove pub
