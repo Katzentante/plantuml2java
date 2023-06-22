@@ -31,7 +31,6 @@ struct Args {
 }
 
 fn main() {
-    // env_logger::init();
     env_logger::builder().filter_level(log::LevelFilter::Trace).init();
     let args = Args::parse();
     if let Err(e) = generate::generate_files(&args.input, &args.output) {
