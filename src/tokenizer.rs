@@ -92,6 +92,13 @@ impl Searcher {
     }
 
     fn search(&mut self) -> Result<(), SearchError> {
+        // 1. @startyaml
+        // 2. class, enum, etc.
+        // 3. attributes/functions/relations
+        //    3.1. functions: parameters, returntype
+        //    3.2. attributes: publicity, name, type
+        //    3.3. relations e.g. inherits
+        // 4. search for @endyaml
         Ok(())
     }
 }
@@ -99,6 +106,9 @@ impl Searcher {
 #[derive(Debug)]
 enum SearchError {
     Error,
+    NoStartYaml,
+    NoEndYaml,
+
 }
 
 impl std::error::Error for SearchError {
