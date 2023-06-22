@@ -13,7 +13,9 @@
 //
 // add more errors
 
-use std::{path::Path, fs::File};
+use std::error::Error;
+use std::fs::read_to_string;
+use std::{fs::File, io::Read, path::Path};
 
 use log::info;
 /* use std::{
@@ -78,7 +80,8 @@ struct Searcher {
     function_type: FunctionType,
     attribute_type: AttributeType,
 
-    tokens: Vec<Token>
+    tokens: Vec<Token>,
+    buffer: String,
 }
 
 impl Searcher {
@@ -88,6 +91,7 @@ impl Searcher {
             function_type,
             attribute_type,
             tokens: Vec::new(),
+            buffer: String::new(),
         }
     }
 
@@ -99,16 +103,55 @@ impl Searcher {
         //    3.2. attributes: publicity, name, type
         //    3.3. relations e.g. inherits
         // 4. search for @endyaml
+        if let Err(e) = self.file.read_to_string(&mut self.buffer) {
+            return Err(SearchError::Error(Box::new(e)));
+        }
+
+        for (line_number, line) in self.buffer.lines().enumerate() {
+            println!("{}", line);
+            if line.trim_start().starts_with("@startuml") {
+                self.tokens.push(Token::Startuml);
+                return self.start_global(line_number);
+            }
+        }
+        Err(SearchError::NoStartYaml)
+    }
+
+    fn start_global(&mut self, line_number: usize) -> Result<(), SearchError> {
+        for (line_number, line) in self.buffer.lines().enumerate().skip(line_number+1) {
+            log::debug!("{} -> ({})", line_number, line);
+            let line = line.trim_start();
+            if line.starts_with("class") {
+                self.tokens.push(Token::Class);
+                return self.search_class(line_number, false);
+            } else if line.starts_with("abstract") {
+                self.tokens.push(Token::Abstract);
+                return self.search_class(line_number, true);
+            } else if line.starts_with("interface") {
+                // return self.search_class(line_number);
+                self.tokens.push(Token::Interface);
+                todo!("Impmlement search_interface");
+            } else if line.starts_with("@enduml") {
+                return Ok(());
+            }
+        }
+        Err(SearchError::NoEndYaml)
+    }
+
+    fn search_class(&self, line_number: usize, is_abstract: bool) -> Result<(), SearchError> {
+        // TODO 
+        let top_line = self.buffer.lines().nth(line_number).unwrap().trim_start();
+
+        log::debug!("{}", top_line);
         Ok(())
     }
 }
 
 #[derive(Debug)]
 enum SearchError {
-    Error,
+    Error(Box<dyn Error>),
     NoStartYaml,
     NoEndYaml,
-
 }
 
 impl std::error::Error for SearchError {
@@ -137,7 +180,9 @@ impl std::error::Error for SearchError {
 impl std::fmt::Display for SearchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SearchError::Error => write!(f, "Error"),
+            SearchError::Error(e) => write!(f, "Error: {}", e),
+            SearchError::NoEndYaml => write!(f, "No @endyaml found"),
+            SearchError::NoStartYaml => write!(f, "No @endstart found"),
         }
     }
 }
