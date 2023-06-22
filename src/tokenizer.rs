@@ -14,6 +14,7 @@
 // add more errors
 use std::error::Error;
 use std::fs::read_to_string;
+use std::str::pattern::Pattern;
 use std::{fs::File, io::Read, path::Path};
 
 use log::info;
@@ -108,9 +109,20 @@ impl Searcher {
             return Err(SearchError::Error(Box::new(e)));
         }
 
-        // TODO ignore inline comments
-        self.buffer = self.buffer.lines().map(|l| l.trim_start()).filter(|l| !l.starts_with('\'')).intersperse("\n").collect();
-        log::debug!("{}", self.buffer);
+        // FIXME use &str instead of String
+        self.buffer = self
+            .buffer
+            .lines()
+            .map(|l| {
+                l.trim_start()
+                    .chars()
+                    .take_while(|c| *c != '\'')
+                    .collect::<String>()
+            })
+            .filter(|l| !l.starts_with('\''))
+            .intersperse("\n".to_string())
+            .collect();
+        // log::debug!("{}", self.buffer);
 
         for (line_number, line) in self.buffer.lines().enumerate() {
             // println!("{}", line);
@@ -125,7 +137,7 @@ impl Searcher {
     fn search_global(&mut self, line_number: usize) -> Result<(), SearchError> {
         // FIXME borrow checker issue To not return search_class, instead just call
         for (line_number, line) in self.buffer.lines().enumerate().skip(line_number + 1) {
-            log::debug!("{} -> ({})", line_number, line);
+            // log::debug!("{} -> ({})", line_number, line);
             if line.starts_with("class") {
                 self.tokens.push(Token::Class);
                 return self.search_class(line_number, false);
@@ -163,7 +175,7 @@ impl Searcher {
         self.tokens.push(Token::Name(name.to_string()));
         if words.last().unwrap().ends_with("{") {
             self.tokens.push(Token::StartObject);
-            todo!("start search for attributes etc");
+            todo!("start search for attributes, methods etc.");
         }
 
         log::debug!("{:?} -> name: {}", words, name);

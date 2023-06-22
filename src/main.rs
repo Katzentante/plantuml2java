@@ -5,6 +5,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #![feature(iter_intersperse)]
+#![feature(pattern)]
 use clap::Parser;
 use log::error;
 
