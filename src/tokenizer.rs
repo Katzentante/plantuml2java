@@ -106,6 +106,7 @@ impl Searcher {
             return Err(SearchError::Error(Box::new(e)));
         }
 
+        // TODO ignore inline comments
         self.buffer = self.buffer.lines().map(|l| l.trim_start()).filter(|l| !l.starts_with('\'')).intersperse("\n").collect();
         log::debug!("{}", self.buffer);
 
@@ -113,13 +114,14 @@ impl Searcher {
             // println!("{}", line);
             if line.starts_with("@startuml") {
                 self.tokens.push(Token::Startuml);
-                return self.start_global(line_number);
+                return self.search_global(line_number);
             }
         }
         Err(SearchError::NoStartYaml)
     }
 
-    fn start_global(&mut self, line_number: usize) -> Result<(), SearchError> {
+    fn search_global(&mut self, line_number: usize) -> Result<(), SearchError> {
+        // FIXME borrow checker issue To not return search_class, instead just call
         for (line_number, line) in self.buffer.lines().enumerate().skip(line_number + 1) {
             log::debug!("{} -> ({})", line_number, line);
             if line.starts_with("class") {
@@ -159,11 +161,12 @@ impl Searcher {
         self.tokens.push(Token::Name(name.to_string()));
         if words.last().unwrap().ends_with("{") {
             self.tokens.push(Token::StartObject);
+            todo!("start search for attributes etc");
         }
 
         log::debug!("{:?} -> name: {}", words, name);
         // log::debug!("\"{}\" -> {:#?}", top_line, words);
-        Ok(())
+        return self.search_global(line_number);
     }
 }
 
