@@ -28,8 +28,9 @@ use log::info;
 #[derive(Debug)]
 pub enum Token {
     Class,
+    AbstractClass,
     Interface,
-    // Enum,
+    Enum,
     StartObject,
     EndObject,
     StartMethod,
@@ -37,6 +38,7 @@ pub enum Token {
 
     Public,
     Protected,
+    PackagePrivate,
     Private,
     Abstract,
     Static,
@@ -128,7 +130,7 @@ impl Searcher {
                 self.tokens.push(Token::Class);
                 return self.search_class(line_number, false);
             } else if line.starts_with("abstract") {
-                self.tokens.push(Token::Abstract);
+                self.tokens.push(Token::AbstractClass);
                 return self.search_class(line_number, true);
             } else if line.starts_with("interface") {
                 // return self.search_class(line_number);
