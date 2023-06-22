@@ -4,6 +4,7 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
+#![feature(iter_intersperse)]
 use clap::Parser;
 use log::error;
 

@@ -12,7 +12,6 @@
 //      example: net.beans.ClassName is in ./net/beans/ClassName.java
 //
 // add more errors
-
 use std::error::Error;
 use std::fs::read_to_string;
 use std::{fs::File, io::Read, path::Path};
@@ -107,9 +106,12 @@ impl Searcher {
             return Err(SearchError::Error(Box::new(e)));
         }
 
+        self.buffer = self.buffer.lines().map(|l| l.trim_start()).filter(|l| !l.starts_with('\'')).intersperse("\n").collect();
+        log::debug!("{}", self.buffer);
+
         for (line_number, line) in self.buffer.lines().enumerate() {
-            println!("{}", line);
-            if line.trim_start().starts_with("@startuml") {
+            // println!("{}", line);
+            if line.starts_with("@startuml") {
                 self.tokens.push(Token::Startuml);
                 return self.start_global(line_number);
             }
@@ -120,7 +122,6 @@ impl Searcher {
     fn start_global(&mut self, line_number: usize) -> Result<(), SearchError> {
         for (line_number, line) in self.buffer.lines().enumerate().skip(line_number + 1) {
             log::debug!("{} -> ({})", line_number, line);
-            let line = line.trim_start();
             if line.starts_with("class") {
                 self.tokens.push(Token::Class);
                 return self.search_class(line_number, false);
@@ -140,7 +141,7 @@ impl Searcher {
 
     fn search_class(&mut self, line_number: usize, is_abstract: bool) -> Result<(), SearchError> {
         // TODO
-        let top_line = self.buffer.lines().nth(line_number).unwrap().trim_start();
+        let top_line = self.buffer.lines().nth(line_number).unwrap();
         let words: Vec<&str> = top_line.split_whitespace().skip(1).collect();
         let mut name = if is_abstract {
             if words[0] == "class" {
