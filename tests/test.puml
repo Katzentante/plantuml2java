@@ -1,6 +1,6 @@
 @startuml
 skinparam classAttributeIconSize 0
-class Held{
+abstract class Held << (Q,red) >>
 # name : String
 # stärke : int
 # lebenspunkte : int

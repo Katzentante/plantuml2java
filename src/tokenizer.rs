@@ -118,7 +118,7 @@ impl Searcher {
     }
 
     fn start_global(&mut self, line_number: usize) -> Result<(), SearchError> {
-        for (line_number, line) in self.buffer.lines().enumerate().skip(line_number+1) {
+        for (line_number, line) in self.buffer.lines().enumerate().skip(line_number + 1) {
             log::debug!("{} -> ({})", line_number, line);
             let line = line.trim_start();
             if line.starts_with("class") {
@@ -138,11 +138,30 @@ impl Searcher {
         Err(SearchError::NoEndYaml)
     }
 
-    fn search_class(&self, line_number: usize, is_abstract: bool) -> Result<(), SearchError> {
-        // TODO 
+    fn search_class(&mut self, line_number: usize, is_abstract: bool) -> Result<(), SearchError> {
+        // TODO
         let top_line = self.buffer.lines().nth(line_number).unwrap().trim_start();
+        let words: Vec<&str> = top_line.split_whitespace().skip(1).collect();
+        let mut name = if is_abstract {
+            if words[0] == "class" {
+                words[1]
+            } else {
+                words[0]
+            }
+        } else {
+            words[0]
+        };
 
-        log::debug!("{}", top_line);
+        if let Some(s) = name.strip_suffix("{") {
+            name = s;
+        }
+        self.tokens.push(Token::Name(name.to_string()));
+        if words.last().unwrap().ends_with("{") {
+            self.tokens.push(Token::StartObject);
+        }
+
+        log::debug!("{:?} -> name: {}", words, name);
+        // log::debug!("\"{}\" -> {:#?}", top_line, words);
         Ok(())
     }
 }
