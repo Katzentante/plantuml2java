@@ -55,11 +55,11 @@ pub enum Token {
     Enduml,
 }
 
-enum FunctionType {
+/* enum Type {
     Java,       // ReturnType Name(ParameterType Parameter) { ... }
     Rust,       // Name(Parameter: ParameterType) -> ReturnType { ... }
     Typescript, // Name(Parameter: ParameterType): ReturnType { ... }
-}
+} */
 
 enum AttributeType {
     Java,       // Type Name
@@ -71,7 +71,7 @@ pub fn get_identifiers<'a>(filepath: &Path) -> Result<Vec<Token>, Box<dyn std::e
     let file = File::open(filepath)?;
     info!("Opened {:?} to parse from", filepath);
 
-    let mut searcher = Searcher::new(file, FunctionType::Java, AttributeType::Java);
+    let mut searcher = Searcher::new(file, AttributeType::Java);
     searcher.search()?;
 
     Ok(searcher.tokens)
@@ -79,7 +79,6 @@ pub fn get_identifiers<'a>(filepath: &Path) -> Result<Vec<Token>, Box<dyn std::e
 
 struct Searcher {
     file: File,
-    function_type: FunctionType,
     attribute_type: AttributeType,
 
     tokens: Vec<Token>,
@@ -87,10 +86,9 @@ struct Searcher {
 }
 
 impl Searcher {
-    fn new(file: File, function_type: FunctionType, attribute_type: AttributeType) -> Self {
+    fn new(file: File, attribute_type: AttributeType) -> Self {
         Self {
             file,
-            function_type,
             attribute_type,
             tokens: Vec::new(),
             buffer: String::new(),
@@ -119,7 +117,7 @@ impl Searcher {
                     .take_while(|c| *c != '\'')
                     .collect::<String>()
             })
-            .filter(|l| !l.starts_with('\''))
+            .filter(|l| !l.starts_with('\'') && !l.is_empty())
             .intersperse("\n".to_string())
             .collect();
         // log::debug!("{}", self.buffer);
@@ -183,6 +181,19 @@ impl Searcher {
                     self.tokens.push(Token::EndObject);
                     break;
                 }
+                
+                // self.search_inner_class(line_number);
+                // match line.chars().nth(0) {
+                //     '+' => 
+                //     '-' => 
+                //     '~' => 
+                //     '#' => 
+                // }
+                // match self.attribute_type {
+                //     AttributeType::Java => ,
+                //     AttributeType::Typescript => ,
+                // }
+
             }
         }
 

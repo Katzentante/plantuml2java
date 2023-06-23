@@ -3,13 +3,13 @@ skinparam classAttributeIconSize 0
 abstract class Held << (Q,red) >> {
 # name : String
 # stärke : int
-# lebenspunkte : int
-# angriffswert : int
+# lebenspunkte:int
+# angriffswert :int
 # waffe : Waffe
-+ addLebenspunkte(faktor : int) : boolean
++addLebenspunkte(faktor : int) : boolean
 + angreifen(monster : Monster, regel : Kampfregel) : void
-+ {abstract} getAngriffswert() : int
-- {abstract} useweapon(w : Waffe) : void
++ {abstract} getAngriffswert(): int
+-{abstract} useweapon(w: Waffe) :void
 }
 class Zauberer{
 - zauberkraft : int
