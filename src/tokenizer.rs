@@ -135,7 +135,7 @@ impl Searcher {
     }
 
     fn search_global(&mut self, line_number: usize) -> Result<(), SearchError> {
-        // FIXME borrow checker issue To not return search_class, instead just call
+        // FIXME borrow checker issue To not return search_class, instead just call it
         for (line_number, line) in self.buffer.lines().enumerate().skip(line_number + 1) {
             // log::debug!("{} -> ({})", line_number, line);
             if line.starts_with("class") {
@@ -175,10 +175,18 @@ impl Searcher {
         self.tokens.push(Token::Name(name.to_string()));
         if words.last().unwrap().ends_with("{") {
             self.tokens.push(Token::StartObject);
-            todo!("start search for attributes, methods etc.");
+            // todo!("start search for attributes, methods etc.");
+
+            for line in self.buffer.lines().skip(line_number + 1) {
+                log::debug!("{} .. {:?}", line_number, line);
+                if line == "}" {
+                    self.tokens.push(Token::EndObject);
+                    break;
+                }
+            }
         }
 
-        log::debug!("{:?} -> name: {}", words, name);
+        // log::debug!("top line: {} -> {:?} -> name: {}", top_line, words, name);
         // log::debug!("\"{}\" -> {:#?}", top_line, words);
         return self.search_global(line_number);
     }
