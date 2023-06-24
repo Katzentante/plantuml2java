@@ -169,8 +169,7 @@ impl Searcher {
                         // "bla <|-- "
                         self.tokens.push(Token::Name(words[2].to_string()));
                     }
-                    Some(_) => (),
-                    None => (),
+                    Some(_) | None => (),
                 }
             }
         }
