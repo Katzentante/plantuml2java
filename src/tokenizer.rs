@@ -124,7 +124,7 @@ impl Searcher {
         // log::debug!("{}", self.buffer);
 
         for (line_number, line) in self.buffer.lines().enumerate() {
-            self.tokens.push(Token::Line(line_number+1));
+            // self.tokens.push(Token::Line(line_number+1));
             // println!("{}", line);
             if line.starts_with("@startuml") {
                 self.tokens.push(Token::Startuml);
@@ -137,7 +137,7 @@ impl Searcher {
     fn search_global(&mut self, line_number: usize) -> Result<(), SearchError> {
         // FIXME borrow checker issue To not return search_class, instead just call it
         for (line_number, line) in self.buffer.lines().enumerate().skip(line_number + 1) {
-            self.tokens.push(Token::Line(line_number+1));
+            // self.tokens.push(Token::Line(line_number+1));
             // log::debug!("{} -> ({})", line_number, line);
             if line.starts_with("class") {
                 self.tokens.push(Token::Class);
@@ -180,7 +180,7 @@ impl Searcher {
             // todo!("start search for attributes, methods etc.");
 
             for (line_number, line) in self.buffer.lines().enumerate().skip(line_number + 1) {
-                self.tokens.push(Token::Line(line_number+1));
+                // self.tokens.push(Token::Line(line_number+1));
                 log::debug!("{} .. {:?}", line_number, line);
                 if line == "}" {
                     self.tokens.push(Token::EndObject);
