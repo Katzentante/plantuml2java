@@ -16,7 +16,7 @@ class Zauberer{
 
 - {static} name() : stat
 + getAngriffswert() : int
-+ heilen(held : Held) : void
++ heilen(held : Held)
 }
 Held <|-- Zauberer
 ' class Krieger{

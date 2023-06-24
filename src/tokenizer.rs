@@ -71,7 +71,7 @@ pub fn get_identifiers<'a>(filepath: &Path) -> Result<Vec<Token>, Box<dyn std::e
     let file = File::open(filepath)?;
     info!("Opened {:?} to parse from", filepath);
 
-    let mut searcher = Searcher::new(file, AttributeType::Java);
+    let mut searcher = Searcher::new(file, AttributeType::Typescript);
     searcher.search()?;
 
     Ok(searcher.tokens)
@@ -147,6 +147,7 @@ impl Searcher {
                 self.tokens.push(Token::Interface);
                 todo!("Impmlement search_interface");
             } else if line.starts_with("@enduml") {
+                self.tokens.push(Token::Enduml);
                 return Ok(());
             }
         }
@@ -181,19 +182,69 @@ impl Searcher {
                     self.tokens.push(Token::EndObject);
                     break;
                 }
-                
-                // self.search_inner_class(line_number);
-                // match line.chars().nth(0) {
-                //     '+' => 
-                //     '-' => 
-                //     '~' => 
-                //     '#' => 
-                // }
-                // match self.attribute_type {
-                //     AttributeType::Java => ,
-                //     AttributeType::Typescript => ,
-                // }
 
+                // self.search_inner_class(line_number);
+                // TODO hwo to use function instead of very long match statement
+                match self.attribute_type {
+                    AttributeType::Typescript => {
+                        let mut skip = 1;
+                        match line.chars().nth(0) {
+                            Some('+') => self.tokens.push(Token::Public),
+                            Some('-') => self.tokens.push(Token::Private),
+                            Some('~') => self.tokens.push(Token::PackagePrivate),
+                            Some('#') => self.tokens.push(Token::Protected),
+                            Some(_) => skip = 0,
+                            _ => (),
+                        }
+                        let mut buf = String::new();
+                        let mut skip_next = false;
+                        let mut in_method = false;
+                        for c in line.chars().filter(|c| !c.is_whitespace()).skip(skip) {
+                            if skip_next {
+                                skip_next = false;
+                                continue;
+                            }
+
+                            // log::debug!("{}", c);
+                            // TODO use less clone()
+                            //      {abstract} {static} {method} etc.
+                            match c {
+                                '\\' => skip_next = true,
+                                '(' => {
+                                    self.tokens.push(Token::Name(buf.clone()));
+                                    self.tokens.push(Token::StartMethod);
+                                    in_method = true;
+                                    buf.clear();
+                                }
+                                ')' => {
+                                    if !buf.is_empty() {
+                                        self.tokens.push(Token::Type(buf.clone()));
+                                    }
+                                    self.tokens.push(Token::EndMethod);
+                                    in_method = false;
+                                    buf.clear();
+                                }
+                                ':' => {
+                                    if !buf.is_empty() {
+                                        self.tokens.push(Token::Variable(buf.clone()));
+                                        buf.clear();
+                                    }
+                                }
+                                ',' => {
+                                    if in_method {
+                                        self.tokens.push(Token::Type(buf.clone()));
+                                        buf.clear();
+                                    }
+                                }
+                                x => buf.push(x),
+                            }
+                        }
+                        if !buf.is_empty() {
+                            self.tokens.push(Token::Type(buf.clone()));
+                        }
+                    }
+                    AttributeType::Java => {}
+                }
             }
         }
 
@@ -201,6 +252,8 @@ impl Searcher {
         // log::debug!("\"{}\" -> {:#?}", top_line, words);
         return self.search_global(line_number);
     }
+
+    // fn search_line_in_class_ts(&mut self, line: &str) {}
 }
 
 #[derive(Debug)]
