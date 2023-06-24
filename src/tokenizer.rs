@@ -97,13 +97,13 @@ impl Searcher {
     }
 
     fn search(&mut self) -> Result<(), SearchError> {
-        // 1. @startyaml
-        // 2. class, enum, etc.
-        // 3. attributes/functions/relations
-        //    3.1. functions: parameters, returntype
-        //    3.2. attributes: publicity, name, type
+        // 1. @startyaml \\
+        // 2. class, enum, etc. \
+        // 3. attributes/functions/relations \\
+        //    3.1. functions: parameters, returntype \\
+        //    3.2. attributes: publicity, name, type \\
         //    3.3. relations e.g. inherits
-        // 4. search for @endyaml
+        // 4. search for @endyaml \\
         if let Err(e) = self.file.read_to_string(&mut self.buffer) {
             return Err(SearchError::Error(Box::new(e)));
         }
@@ -152,6 +152,26 @@ impl Searcher {
             } else if line.starts_with("@enduml") {
                 self.tokens.push(Token::Enduml);
                 return Ok(());
+            } else {
+                let words: Vec<&str> = line.split_whitespace().collect();
+                match words.get(1) {
+                    Some(&"<|--") | Some(&"<|..") => {
+                        self.tokens.push(Token::Name(words[0].to_string()));
+                        self.tokens.push(Token::InheritesLeft);
+                        // FIXME if words[2] is None crashes aka if nothing inherits words[0] ->
+                        // "bla <|-- "
+                        self.tokens.push(Token::Name(words[2].to_string()));
+                    }
+                    Some(&"--|>") | Some(&"..|>") => {
+                        self.tokens.push(Token::Name(words[0].to_string()));
+                        self.tokens.push(Token::InheritesRight);
+                        // FIXME if words[2] is None crashes aka if nothing inherits words[0] ->
+                        // "bla <|-- "
+                        self.tokens.push(Token::Name(words[2].to_string()));
+                    }
+                    Some(_) => (),
+                    None => (),
+                }
             }
         }
         Err(SearchError::NoEndYaml)
@@ -240,15 +260,18 @@ impl Searcher {
                                         buf.clear();
                                     }
                                 }
-                                '{' => {
-                                    buf.clear()
-                                }
+                                '{' => buf.clear(),
                                 '}' => {
                                     self.tokens.push(match buf.as_str() {
                                         "static" => Token::Static,
                                         "classifier" => Token::Static,
                                         "abstract" => Token::Abstract,
-                                        _ => return Err(SearchError::UnknwonInCurlyBraces(line_number+1, buf.clone())),
+                                        _ => {
+                                            return Err(SearchError::UnknwonInCurlyBraces(
+                                                line_number + 1,
+                                                buf.clone(),
+                                            ))
+                                        }
                                     });
                                     buf.clear();
                                 }
@@ -309,7 +332,11 @@ impl std::fmt::Display for SearchError {
             SearchError::Error(e) => write!(f, "Error: {}", e),
             SearchError::NoEndYaml => write!(f, "No @endyaml found"),
             SearchError::NoStartYaml => write!(f, "No @endstart found"),
-            SearchError::UnknwonInCurlyBraces(line_number, s) => write!(f, "Unknown word in Brace on line {}: \"{}\"", line_number, s),
+            SearchError::UnknwonInCurlyBraces(line_number, s) => write!(
+                f,
+                "Unknown word in Brace on line {}: \"{}\"",
+                line_number, s
+            ),
         }
     }
 }
