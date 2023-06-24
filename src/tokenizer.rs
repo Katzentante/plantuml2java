@@ -53,6 +53,7 @@ pub enum Token {
 
     Startuml,
     Enduml,
+    Line(usize),
 }
 
 /* enum Type {
@@ -123,6 +124,7 @@ impl Searcher {
         // log::debug!("{}", self.buffer);
 
         for (line_number, line) in self.buffer.lines().enumerate() {
+            self.tokens.push(Token::Line(line_number+1));
             // println!("{}", line);
             if line.starts_with("@startuml") {
                 self.tokens.push(Token::Startuml);
@@ -135,6 +137,7 @@ impl Searcher {
     fn search_global(&mut self, line_number: usize) -> Result<(), SearchError> {
         // FIXME borrow checker issue To not return search_class, instead just call it
         for (line_number, line) in self.buffer.lines().enumerate().skip(line_number + 1) {
+            self.tokens.push(Token::Line(line_number+1));
             // log::debug!("{} -> ({})", line_number, line);
             if line.starts_with("class") {
                 self.tokens.push(Token::Class);
@@ -176,7 +179,8 @@ impl Searcher {
             self.tokens.push(Token::StartObject);
             // todo!("start search for attributes, methods etc.");
 
-            for line in self.buffer.lines().skip(line_number + 1) {
+            for (line_number, line) in self.buffer.lines().enumerate().skip(line_number + 1) {
+                self.tokens.push(Token::Line(line_number+1));
                 log::debug!("{} .. {:?}", line_number, line);
                 if line == "}" {
                     self.tokens.push(Token::EndObject);
@@ -236,6 +240,18 @@ impl Searcher {
                                         buf.clear();
                                     }
                                 }
+                                '{' => {
+                                    buf.clear()
+                                }
+                                '}' => {
+                                    self.tokens.push(match buf.as_str() {
+                                        "static" => Token::Static,
+                                        "classifier" => Token::Static,
+                                        "abstract" => Token::Abstract,
+                                        _ => return Err(SearchError::UnknwonInCurlyBraces(line_number+1, buf.clone())),
+                                    });
+                                    buf.clear();
+                                }
                                 x => buf.push(x),
                             }
                         }
@@ -261,6 +277,7 @@ enum SearchError {
     Error(Box<dyn Error>),
     NoStartYaml,
     NoEndYaml,
+    UnknwonInCurlyBraces(usize, String),
 }
 
 impl std::error::Error for SearchError {
@@ -292,6 +309,7 @@ impl std::fmt::Display for SearchError {
             SearchError::Error(e) => write!(f, "Error: {}", e),
             SearchError::NoEndYaml => write!(f, "No @endyaml found"),
             SearchError::NoStartYaml => write!(f, "No @endstart found"),
+            SearchError::UnknwonInCurlyBraces(line_number, s) => write!(f, "Unknown word in Brace on line {}: \"{}\"", line_number, s),
         }
     }
 }
